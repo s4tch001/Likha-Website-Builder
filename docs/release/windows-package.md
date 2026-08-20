@@ -1,7 +1,7 @@
 # Windows release package
 
-Phase 17c adds a reproducible, self-contained Windows x64 release package for Likha. Build it
-from the repository root:
+The release pipeline creates both a reproducible portable package and a per-user Windows x64
+installer. Build them from the repository root:
 
 ```powershell
 .\scripts\package-release.ps1 -Version 0.1.0
@@ -9,7 +9,22 @@ from the repository root:
 
 The script performs a clean editor install and production export, publishes the .NET desktop app,
 verifies that both `WebsiteBuilder.exe` and `wwwroot/index.html` exist, writes a per-file SHA-256
-manifest, and creates `artifacts/release/Likha-<version>-<rid>.zip`.
+manifest, and creates:
+
+- `artifacts/release/Likha-<version>-win-x64.zip`
+- `artifacts/release/Likha-<version>-win-x64-setup.exe`
+- `artifacts/release/Likha-<version>-win-x64-setup.exe.sha256`
+
+The setup compiler is pinned to the official signed Inno Setup 7.1.0 x64 release and verified
+against its publisher-provided SHA-256 before use:
+
+```powershell
+.\scripts\install-inno.ps1
+```
+
+The setup installs without elevation under the current user's local Programs directory, registers
+an uninstaller, and creates Start Menu plus default-on Desktop shortcuts. It never removes project
+folders or the user's local layout data.
 
 The package is self-contained and ReadyToRun. Trimming and single-file publishing remain disabled:
 WebView2, WPF, AvalonDock, dependency injection, and the embedded editor use resources or runtime
@@ -18,18 +33,18 @@ campaign.
 
 ## Rehearsal result
 
-The 2026-08-20 release rehearsal produced:
+The 2026-08-20 installer rehearsal produced:
 
-- Package: `Likha-0.1.0-win-x64.zip`
-- ZIP bytes: `80,027,749`
-- ZIP SHA-256: `72a18895139e4e936e567d78650c875709545a6e70180a8caa8491458995215d`
-- Manifest payload: `554` files
-- Debug symbols: none
-- Startup smoke: the packaged executable remained healthy for the eight-second observation window
-- Signature: unsigned, as expected without a publisher-owned certificate
+- Installer: `Likha-0.1.0-win-x64-setup.exe`
+- Installer bytes: `55,583,913`
+- Installer SHA-256: `be6952fd0e342a1a4f63143320cdf56a989f4867962435232bdfad0def85423f`
+- Install/uninstall: both returned exit code 0 and left no test payload or uninstall registration
+- Startup smoke: the installed executable remained healthy for the eight-second observation window
+- Signature: unsigned, as expected for the owner's personal build
 
-The GitHub Actions tag/manual workflow creates the same unsigned portable artifact. It deliberately
-uses read-only repository permissions and does not publish a release automatically.
+The GitHub Actions tag/manual workflow creates the same unsigned ZIP, installer, and checksum as a
+retained workflow artifact. It deliberately uses read-only repository permissions and does not
+publish a GitHub Release automatically.
 
 ## Authenticode signing boundary
 
@@ -40,7 +55,6 @@ When a publisher-owned code-signing certificate with a private key is available 
 .\scripts\package-release.ps1 -Version 1.0.0 -CertificateThumbprint '<thumbprint>'
 ```
 
-The script verifies the resulting signature and records the signed state in the manifest. A public
-installer/MSIX also requires the publisher identity, certificate subject, desired distribution
-channel, and upgrade identity. Those values must come from the project owner; they must not be
-invented in source control.
+The script verifies both the application and final installer signatures and records the application
+signed state in the manifest. Public distribution still requires a publisher-owned certificate;
+the unsigned setup is intended only for the owner's personal use.

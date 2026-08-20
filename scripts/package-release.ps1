@@ -8,7 +8,11 @@ param(
 
     [string] $CertificateThumbprint = '',
 
-    [uri] $TimestampServer = 'http://timestamp.digicert.com'
+    [uri] $TimestampServer = 'http://timestamp.digicert.com',
+
+    [string] $InnoCompiler = '',
+
+    [switch] $SkipInstaller
 )
 
 $ErrorActionPreference = 'Stop'
@@ -18,11 +22,24 @@ function Assert-NativeSuccess([string] $Step) {
         throw "$Step failed with exit code $LASTEXITCODE."
     }
 }
+
+function Set-VerifiedSignature([string] $FilePath, $Certificate) {
+    $signature = Set-AuthenticodeSignature `
+        -FilePath $FilePath `
+        -Certificate $Certificate `
+        -TimestampServer $TimestampServer `
+        -HashAlgorithm SHA256
+    if ($signature.Status -ne [System.Management.Automation.SignatureStatus]::Valid) {
+        throw "Authenticode signing failed for $FilePath`: $($signature.StatusMessage)"
+    }
+}
 $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $artifactsRoot = [System.IO.Path]::GetFullPath((Join-Path $repositoryRoot 'artifacts\release'))
 $packageName = "Likha-$Version-$RuntimeIdentifier"
 $publishDirectory = [System.IO.Path]::GetFullPath((Join-Path $artifactsRoot $packageName))
 $zipPath = [System.IO.Path]::GetFullPath((Join-Path $artifactsRoot "$packageName.zip"))
+$installerPath = [System.IO.Path]::GetFullPath((Join-Path $artifactsRoot "$packageName-setup.exe"))
+$installerChecksumPath = "$installerPath.sha256"
 $artifactsPrefix = $artifactsRoot.TrimEnd([System.IO.Path]::DirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
 
 if (-not $publishDirectory.StartsWith($artifactsPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
@@ -35,6 +52,12 @@ if (Test-Path -LiteralPath $publishDirectory) {
 }
 if (Test-Path -LiteralPath $zipPath) {
     Remove-Item -LiteralPath $zipPath -Force
+}
+if (Test-Path -LiteralPath $installerPath) {
+    Remove-Item -LiteralPath $installerPath -Force
+}
+if (Test-Path -LiteralPath $installerChecksumPath) {
+    Remove-Item -LiteralPath $installerChecksumPath -Force
 }
 
 Push-Location (Join-Path $repositoryRoot 'src\WebsiteBuilder.Editor')
@@ -74,6 +97,7 @@ if (-not (Test-Path -LiteralPath (Join-Path $publishDirectory 'wwwroot\index.htm
     throw 'Published editor bundle is missing wwwroot/index.html.'
 }
 
+$certificate = $null
 if ($CertificateThumbprint) {
     $normalizedThumbprint = $CertificateThumbprint.Replace(' ', '').ToUpperInvariant()
     $certificate = Get-ChildItem -Path Cert:\CurrentUser\My | Where-Object {
@@ -82,14 +106,7 @@ if ($CertificateThumbprint) {
     if (-not $certificate) {
         throw 'The requested code-signing certificate was not found in Cert:\CurrentUser\My.'
     }
-    $signature = Set-AuthenticodeSignature `
-        -FilePath $executable `
-        -Certificate $certificate `
-        -TimestampServer $TimestampServer `
-        -HashAlgorithm SHA256
-    if ($signature.Status -ne [System.Management.Automation.SignatureStatus]::Valid) {
-        throw "Authenticode signing failed: $($signature.StatusMessage)"
-    }
+    Set-VerifiedSignature -FilePath $executable -Certificate $certificate
 }
 
 $hashEntries = Get-ChildItem -LiteralPath $publishDirectory -File -Recurse |
@@ -114,3 +131,44 @@ Compress-Archive -LiteralPath $publishDirectory -DestinationPath $zipPath -Compr
 $zipHash = (Get-FileHash -LiteralPath $zipPath -Algorithm SHA256).Hash.ToLowerInvariant()
 Write-Output "Package: $zipPath"
 Write-Output "SHA256: $zipHash"
+
+if ($SkipInstaller) {
+    Write-Output 'Installer: skipped'
+    return
+}
+if ($RuntimeIdentifier -ne 'win-x64') {
+    throw 'The installer currently supports only win-x64. Use -SkipInstaller for other runtime identifiers.'
+}
+
+if (-not $InnoCompiler) {
+    $candidates = @(
+        (Join-Path $repositoryRoot '.tools\inno-7.1.0\ISCC.exe'),
+        (Join-Path ${env:ProgramFiles} 'Inno Setup 7\ISCC.exe'),
+        (Join-Path ${env:LOCALAPPDATA} 'Programs\Inno Setup 7\ISCC.exe')
+    )
+    $InnoCompiler = $candidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+}
+if (-not $InnoCompiler -or -not (Test-Path -LiteralPath $InnoCompiler)) {
+    throw 'Inno Setup 7 compiler not found. Run scripts/install-inno.ps1 or pass -InnoCompiler.'
+}
+
+$installerScript = Join-Path $repositoryRoot 'installer\Likha.iss'
+& $InnoCompiler `
+    "/DAppVersion=$Version" `
+    "/DSourceDir=$publishDirectory" `
+    "/DOutputDir=$artifactsRoot" `
+    $installerScript
+Assert-NativeSuccess 'Inno Setup compilation'
+
+if (-not (Test-Path -LiteralPath $installerPath)) {
+    throw "Installer was not created at $installerPath."
+}
+if ($certificate) {
+    Set-VerifiedSignature -FilePath $installerPath -Certificate $certificate
+}
+
+$installerHash = (Get-FileHash -LiteralPath $installerPath -Algorithm SHA256).Hash.ToLowerInvariant()
+"$installerHash  $([System.IO.Path]::GetFileName($installerPath))" |
+    Set-Content -LiteralPath $installerChecksumPath -Encoding ascii
+Write-Output "Installer: $installerPath"
+Write-Output "Installer SHA256: $installerHash"

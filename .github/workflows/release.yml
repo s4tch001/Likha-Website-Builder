@@ -40,14 +40,24 @@ jobs:
           if (-not $value) { $value = $env:REF_NAME.TrimStart('v') }
           if ($value -notmatch '^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$') { throw 'Invalid semantic version.' }
           "value=$value" >> $env:GITHUB_OUTPUT
-      - name: Build portable release package
+      - name: Install pinned Inno Setup compiler
+        id: inno
+        shell: pwsh
+        run: |
+          $compiler = ./scripts/install-inno.ps1 -Destination "$env:RUNNER_TEMP\InnoSetup"
+          "compiler=$compiler" >> $env:GITHUB_OUTPUT
+      - name: Build portable package and Windows installer
         shell: pwsh
         env:
           PACKAGE_VERSION: ${{ steps.version.outputs.value }}
-        run: ./scripts/package-release.ps1 -Version $env:PACKAGE_VERSION
+          INNO_COMPILER: ${{ steps.inno.outputs.compiler }}
+        run: ./scripts/package-release.ps1 -Version $env:PACKAGE_VERSION -InnoCompiler $env:INNO_COMPILER
       - uses: actions/upload-artifact@v7.0.1
         with:
           name: Likha-${{ steps.version.outputs.value }}-win-x64
-          path: artifacts/release/Likha-${{ steps.version.outputs.value }}-win-x64.zip
+          path: |
+            artifacts/release/Likha-${{ steps.version.outputs.value }}-win-x64.zip
+            artifacts/release/Likha-${{ steps.version.outputs.value }}-win-x64-setup.exe
+            artifacts/release/Likha-${{ steps.version.outputs.value }}-win-x64-setup.exe.sha256
           if-no-files-found: error
           retention-days: 30

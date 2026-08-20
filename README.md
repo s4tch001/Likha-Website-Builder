@@ -1,70 +1,46 @@
 # Likha - Website Builder
 
-A professional Windows desktop **visual website builder** (Webflow/Framer-class) built with
-**C# / .NET 10 LTS / WPF / WebView2**, hosting a **Next.js + React + TypeScript** visual editor. Designs are stored as
-a canonical **Project JSON** model and exported as clean **HTML5 / CSS3 / JavaScript** and **React**
-source — never screenshots or canvas dumps.
+Likha is a Windows desktop visual website builder for creating responsive pages through drag and
+drop. Build layouts on the canvas, edit text and styles, organize pages and layers, import local
+assets, and export the finished project as clean HTML/CSS/JavaScript or React source code.
 
-> Status: **Phases 1–17 are complete.** The editor,
-> secure asset pipeline, reusable block library, persistence, exporters, undo/redo, large-canvas
-> performance architecture, and production package pipeline are implemented.
+## System requirements
 
-## Architecture
+- 64-bit Windows 10 or Windows 11
+- Microsoft Edge WebView2 Runtime (already included with current Windows installations)
+- About 250 MB of free disk space
 
-```
-WebsiteBuilder.sln
-├── src/
-│   ├── WebsiteBuilder.App       WPF (.NET 10) shell + WebView2 host + DI/Host bootstrap
-│   ├── WebsiteBuilder.Core      Domain model (Project JSON), services, serialization — no UI deps
-│   ├── WebsiteBuilder.Bridge    Typed JSON-RPC contract (IEditorBridge) between WPF and the editor
-│   ├── WebsiteBuilder.CodeGen   Project JSON → HTML/CSS/JS and React emitters (pure, testable)
-│   └── WebsiteBuilder.Editor    Next.js 16.3 + React 19.2 + TypeScript 7 + Zustand visual editor
-└── tests/
-    ├── WebsiteBuilder.Core.Tests
-    └── WebsiteBuilder.CodeGen.Tests
-```
+The installer is self-contained. You do not need to install .NET, Node.js, Next.js, React, or
+TypeScript to use the app.
 
-**Data flow:** React Editor → Project JSON (single source of truth) → CodeGen → Export.
+## Install
 
-### Key technology decisions
-- **Editor/exporter:** Next.js 16.3 App Router static export + React 19.2 + native TypeScript 7 + Zustand.
-- **WPF ↔ Web bridge:** typed JSON-RPC over WebView2 `postMessage`.
-- **WPF foundation:** CommunityToolkit.Mvvm + Microsoft.Extensions DI / Hosting.
+1. Download `Likha-<version>-win-x64-setup.exe`.
+2. Run the installer. This personal build is currently unsigned, so Windows may show a SmartScreen
+   warning. Only continue when the file came from this private repository and its SHA-256 matches
+   the accompanying `.sha256` file.
+3. Keep **Create a desktop shortcut** selected, then choose **Install**.
+4. Open **Likha - Website Builder** from the Desktop or Start Menu shortcut.
 
-## Prerequisites
-- **.NET 10 SDK** (the repository also supports its ignored local `.dotnet-sdk` runtime).
-- **Node.js 24+** and **npm**.
-- **WebView2 Runtime** (ships with current Windows 10/11; otherwise install the Evergreen runtime).
+The default installation is for the current Windows user and does not require administrator
+permission.
 
-## Build & run
+## Use the app
 
-### Desktop app (WPF)
-```sh
-.\.dotnet-sdk\dotnet.exe build WebsiteBuilder.sln
-.\.dotnet-sdk\dotnet.exe test WebsiteBuilder.sln
-.\.dotnet-sdk\dotnet.exe run --project src/WebsiteBuilder.App
-```
-The app launches the complete dark-themed editor shell.
+1. Create a new project or open an existing project folder.
+2. Drag elements or reusable blocks from the Components panel onto the canvas.
+3. Select an element to edit its text, position, size, colors, spacing, and other styles in the
+   Properties panel.
+4. Use the Layers and Pages panels to organize the document. Switch breakpoints to check responsive
+   layouts.
+5. Import images, SVGs, fonts, video, audio, or documents through the Assets panel.
+6. Save regularly. Undo and redo are available from the Edit menu and keyboard shortcuts.
+7. Use Export when the website is ready, then choose static HTML/CSS/JavaScript or React output.
 
-### React editor
-```sh
-cd src/WebsiteBuilder.Editor
-npm ci
-npm run dev      # http://127.0.0.1:3000
-npm run build    # static export, then copies it to src/WebsiteBuilder.App/wwwroot
-```
-The WPF host loads this bundle inside WebView2 and establishes the typed JSON-RPC bridge handshake.
+Project files and imported assets stay in the project folder you choose. Uninstalling Likha removes
+the application but does not delete those project folders.
 
-## Release package
+## Uninstall
 
-Create a self-contained Windows x64 package (including the static editor) with:
-
-```powershell
-.\scripts\package-release.ps1 -Version 0.1.0
-```
-
-Output is written under `artifacts/release/` as a ZIP with a per-file SHA-256 manifest. Pass
-`-CertificateThumbprint` to sign the executable with a private-key certificate in the current
-user's Windows certificate store. The tag/manual release workflow produces the same unsigned CI
-artifact; public distribution still requires a publisher-owned code-signing certificate and the
-desired installer identity.
+Open **Windows Settings → Apps → Installed apps**, find **Likha - Website Builder**, and choose
+**Uninstall**.

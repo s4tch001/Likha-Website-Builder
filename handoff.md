@@ -418,6 +418,17 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
   export, 0-warning Release build, and 78 C# tests pass. The 10k/60-nudge Zustand regression result
   is 1,669 ms (35.95/s) with 450 DOM nodes versus the Phase 16d 1,558.4 ms reference, within normal
   local-run variance and preserving the performance architecture.
+- **Migration M3h — personal Windows installer (2026-08-20).** Added a stable-upgrade-identity,
+  per-user Inno Setup installer for the self-contained WPF/WebView2 app. It installs without
+  elevation under `%LOCALAPPDATA%\Programs\Likha`, registers a normal Windows uninstaller, creates
+  Start Menu and default-on Desktop shortcuts, launches the native `WebsiteBuilder.exe`, and never
+  owns or deletes project folders or local layout data. The release script and read-only GitHub
+  workflow now emit the portable ZIP, setup EXE, and SHA-256 sidecar; optional Authenticode signing
+  covers both app and setup. The compiler bootstrap pins the official signed Inno Setup 7.1.0 x64
+  asset and verifies its publisher-provided SHA-256. A clean release rehearsal passed Next/.NET
+  production builds plus silent install, eight-second installed-app startup, and clean uninstall
+  with no leftover test directory or registry entry. README is intentionally end-user-only: app
+  information, requirements, installation, basic use, and uninstall.
 
 ### Standalone polish/fixes already done (user-requested)
 - App renamed to **"Likha - Website Builder"** + logo as exe/window/taskbar icon.
@@ -438,9 +449,10 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
   reproducible Windows packaging, release CI, and embedded-host production hardening are delivered.
   The internal executable remains `WebsiteBuilder.exe`; changing it is an identity migration rather
   than a polish fix because existing data/layout paths and release tooling depend on that name.
-- **External release boundary.** A publicly trusted signature and branded installer/MSIX require a
-  publisher-owned certificate, publisher/upgrade identity, and selected distribution channel. The
-  packaging script accepts the real certificate once supplied; do not commit or invent credentials.
+- **External release boundary.** The personal-use installer is complete and intentionally unsigned.
+  A publicly trusted release still requires a publisher-owned certificate and selected distribution
+  channel. The packaging script accepts the real certificate once supplied; do not commit or invent
+  credentials.
 
 ### Known small TODOs / deferrals
 - Copy/Paste is implemented with a project-scoped internal element clipboard; it intentionally does
@@ -468,11 +480,10 @@ rule). Today's date context in prior sessions was 2026-06; convert relative date
 
 ## 8. Suggested first action in the new session
 
-Phase 17, the private GitHub backup, and the M3g dependency migrations are complete. Continue with
-the personal-use Windows installer requested by the user; public signing is not required for their
-own machine, but preserve the optional Authenticode path. For
-product work, choose an explicitly scoped follow-up from the backlog (group resize, a typed advanced
-transform inspector, or richer interactive widgets) rather than treating those optional features as
-unfinished Phase 17. Preserve the Phase 13 canonical-asset boundary, Phase 16 performance budgets,
-and the M3 revision, validation, persistence, coverage, and dependency gates. Continue updating this
-handoff after every completed sub-phase and stop when remaining Codex usage reaches 10%.
+Phase 17, the private GitHub backup, dependency migrations, and the personal-use Windows installer
+are complete. Verify protected-main settings and release CI before any future product work. Then
+choose an explicitly scoped optional follow-up (group resize, a typed advanced transform inspector,
+or richer interactive widgets) rather than treating it as unfinished Phase 17. Preserve the Phase
+13 canonical-asset boundary, Phase 16 performance budgets, and the M3 revision, validation,
+persistence, coverage, dependency, and installer gates. Continue updating this handoff after every
+completed sub-phase and stop when remaining Codex usage reaches 10%.

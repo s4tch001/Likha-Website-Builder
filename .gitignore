@@ -8,6 +8,7 @@ obj/
 artifacts/
 .dotnet-sdk/
 .dotnet-install.ps1
+.tools/
 [Dd]ebug/
 [Rr]elease/
 !docs/release/
