@@ -107,3 +107,28 @@ linear scans instead of creating unbounded grid buckets.
 The nudge scenario is now 10.9× faster than baseline. Its remaining ~64.9 ms/update is dominated by
 full-Project mutation cloning plus full-snapshot history and synchronization work, addressed in
 Phase 16d.
+
+## Phase 16d result — immutable path copies and shared history
+
+Every project mutation now path-copies only affected nodes and ancestors. Unchanged branches,
+pages, assets, and metadata retain identity. The 50-step history stores these immutable Project
+references directly, so undo/redo no longer deep-clones the full document when recording or
+restoring a step. Deep cloning remains only for newly inserted duplicate/component subtrees, where
+fresh mutable identity is required.
+
+The host bridge deliberately retains its debounced full-Project revision envelope. Replacing it
+with partial patches would require a new cross-language transaction/conflict protocol and would
+weaken the proven authoritative recovery path; standalone mode now avoids installing unused host
+transport subscriptions.
+
+| Measurement | 16a baseline | After 16b | After 16c | After 16d |
+| --- | ---: | ---: | ---: | ---: |
+| Settled total DOM elements | 10,181 | 10,181 | 450 | 450 |
+| Cold-reload LCP | 156 ms | 148 ms | 135 ms | 142 ms |
+| Cold-reload CLS | 0.00 | 0.00 | 0.00 | 0.00 |
+| 60 right-arrow nudges | 42,503.5 ms | 18,015.8 ms | 3,891.5 ms | 1,558.4 ms |
+| Effective interaction throughput | 1.41/s | 3.33/s | 15.42/s | 38.50/s |
+
+The final development-server result is 27.3× baseline throughput and ~26.0 ms/update. It does not
+claim a locked 60 fps at 10k, but the architecture no longer scales DOM/history/copy cost directly
+with every mounted project node. Phase 17 should preserve these budgets during UI polish.

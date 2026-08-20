@@ -248,6 +248,35 @@ describe("editorStore", () => {
     ).toBe("#ff0000");
   });
 
+  it("path-copies mutations while preserving untouched branch references", () => {
+    const before = useEditorStore.getState().project!;
+    const beforeA = findNode(before, "a")!;
+    const beforeB = findNode(before, "b")!;
+
+    useEditorStore.getState().moveElement("a", 25, 30);
+
+    const after = useEditorStore.getState().project!;
+    expect(after).not.toBe(before);
+    expect(findNode(after, "a")).not.toBe(beforeA);
+    expect(findNode(after, "b")).toBe(beforeB);
+    expect(beforeA).toMatchObject({ x: 0, y: 0 });
+    expect(findNode(after, "a")).toMatchObject({ x: 25, y: 30 });
+  });
+
+  it("history restores structurally shared immutable snapshots", () => {
+    const before = useEditorStore.getState().project!;
+    useEditorStore.getState().setStyle("a", "color", "red");
+    const edited = useEditorStore.getState().project!;
+
+    useEditorStore.getState().undo();
+    expect(useEditorStore.getState().project).toBe(before);
+    expect(findNode(before, "a")!.styles.color).toBeUndefined();
+
+    useEditorStore.getState().redo();
+    expect(useEditorStore.getState().project).toBe(edited);
+    expect(findNode(edited, "a")!.styles.color).toBe("red");
+  });
+
   it("clears redo on a new mutation and clears all history on host project load", () => {
     useEditorStore.getState().setStyle("a", "color", "red");
     useEditorStore.getState().undo();

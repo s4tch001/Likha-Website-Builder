@@ -318,6 +318,14 @@ export async function connectHost(): Promise<HostInfo | null> {
     sb.setStyle("hero-heading", "font-size", "40px");
   });
 
+  // Standalone/benchmark mode has no transport consumers. Avoid installing
+  // host-sync subscriptions whose timers and derived payloads would measure
+  // bridge bookkeeping instead of editor interaction work.
+  if (!bridge.isHosted) {
+    store.setReady(true);
+    return null;
+  }
+
   // Push editor-originated model edits through a revision-checked host request.
   // This prevents a stale full-project snapshot from silently overwriting a
   // host-originated asset mutation. Only one update is in flight at a time.
@@ -465,10 +473,6 @@ export async function connectHost(): Promise<HostInfo | null> {
   });
 
   store.setReady(true);
-
-  if (!bridge.isHosted) {
-    return null;
-  }
 
   // Announce readiness, then pull the current project.
   bridge.publish("editor.ready", {

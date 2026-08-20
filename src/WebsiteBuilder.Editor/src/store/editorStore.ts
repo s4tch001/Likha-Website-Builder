@@ -202,6 +202,102 @@ function isSelfOrDescendant(
   return walk(node);
 }
 
+type NodeMutator = (node: ElementNode) => void;
+
+function mutableNodeCopy(
+  node: ElementNode,
+  children: ElementNode[],
+): ElementNode {
+  return {
+    ...node,
+    attributes: { ...node.attributes },
+    styles: { ...node.styles },
+    responsiveStyles: Object.fromEntries(
+      Object.entries(node.responsiveStyles).map(([id, layer]) => [
+        id,
+        { ...layer },
+      ]),
+    ),
+    children,
+  };
+}
+
+/**
+ * Immutable path-copy update. Only matching nodes and their ancestor path are
+ * cloned; untouched pages, branches, assets, and project metadata retain their
+ * references for cheap rendering and structurally shared history.
+ */
+function updateProjectNodes(
+  project: Project,
+  ids: ReadonlySet<string>,
+  mutate: NodeMutator,
+): Project | null {
+  if (ids.size === 0) return null;
+  let matched = 0;
+
+  const walk = (node: ElementNode): ElementNode => {
+    let childrenChanged = false;
+    const children = node.children.map((child) => {
+      const updated = walk(child);
+      if (updated !== child) childrenChanged = true;
+      return updated;
+    });
+    if (!ids.has(node.id) && !childrenChanged) return node;
+
+    const updated = mutableNodeCopy(
+      node,
+      childrenChanged ? children : [...node.children],
+    );
+    if (ids.has(node.id)) {
+      matched += 1;
+      mutate(updated);
+    }
+    return updated;
+  };
+
+  let pagesChanged = false;
+  const pages = project.pages.map((page) => {
+    const root = walk(page.root);
+    if (root === page.root) return page;
+    pagesChanged = true;
+    return { ...page, root };
+  });
+  return matched > 0 && pagesChanged ? { ...project, pages } : null;
+}
+
+function updateProjectNode(
+  project: Project,
+  id: string,
+  mutate: NodeMutator,
+): Project | null {
+  const walk = (node: ElementNode): { node: ElementNode; found: boolean } => {
+    if (node.id === id) {
+      const updated = mutableNodeCopy(node, [...node.children]);
+      mutate(updated);
+      return { node: updated, found: true };
+    }
+    for (let index = 0; index < node.children.length; index += 1) {
+      const child = node.children[index];
+      const result = walk(child);
+      if (!result.found) continue;
+      const children = [...node.children];
+      children[index] = result.node;
+      return { node: mutableNodeCopy(node, children), found: true };
+    }
+    return { node, found: false };
+  };
+
+  for (let pageIndex = 0; pageIndex < project.pages.length; pageIndex += 1) {
+    const page = project.pages[pageIndex];
+    const result = walk(page.root);
+    if (!result.found) continue;
+    const pages = [...project.pages];
+    pages[pageIndex] = { ...page, root: result.node };
+    return { ...project, pages };
+  }
+  return null;
+}
+
 interface EditorState {
   /** True once the editor shell has mounted and handshaken with the host. */
   ready: boolean;
@@ -413,12 +509,10 @@ export const useEditorStore = create<EditorState>((set) => ({
       if (!targetId) {
         return {};
       }
-      const project = structuredClone(state.project) as Project;
-      const parent = findNode(project, targetId);
-      if (!parent) {
-        return {};
-      }
-      parent.children.push(node);
+      const project = updateProjectNode(state.project, targetId, (parent) => {
+        parent.children.push(node);
+      });
+      if (!project) return {};
       return { project, revision: state.revision + 1 };
     }),
 
@@ -431,12 +525,10 @@ export const useEditorStore = create<EditorState>((set) => ({
       if (!targetId) {
         return {};
       }
-      const project = structuredClone(state.project) as Project;
-      const parent = findNode(project, targetId);
-      if (!parent) {
-        return {};
-      }
-      parent.children.push(createElement(type, x, y));
+      const project = updateProjectNode(state.project, targetId, (parent) => {
+        parent.children.push(createElement(type, x, y));
+      });
+      if (!project) return {};
       return { project, revision: state.revision + 1 };
     }),
 
@@ -461,12 +553,10 @@ export const useEditorStore = create<EditorState>((set) => ({
       if (!node) {
         return {};
       }
-      const project = structuredClone(state.project) as Project;
-      const parent = findNode(project, targetId);
-      if (!parent) {
-        return {};
-      }
-      parent.children.push(node);
+      const project = updateProjectNode(state.project, targetId, (parent) => {
+        parent.children.push(node);
+      });
+      if (!project) return {};
       return { project, revision: state.revision + 1, selectedIds: [node.id] };
     }),
 
@@ -483,12 +573,10 @@ export const useEditorStore = create<EditorState>((set) => ({
       reassignIds(component);
       component.x = Math.round(Math.max(0, x));
       component.y = Math.round(Math.max(0, y));
-      const project = structuredClone(state.project) as Project;
-      const parent = findNode(project, targetId);
-      if (!parent) {
-        return {};
-      }
-      parent.children.push(component);
+      const project = updateProjectNode(state.project, targetId, (parent) => {
+        parent.children.push(component);
+      });
+      if (!project) return {};
       return {
         project,
         revision: state.revision + 1,
@@ -525,16 +613,18 @@ export const useEditorStore = create<EditorState>((set) => ({
       if (!state.project) {
         return {};
       }
-      const project = structuredClone(state.project) as Project;
-      const node = findNode(project, id);
+      const node = findNode(state.project, id);
       if (node?.locked) {
         return {}; // locked elements cannot be deleted
       }
-      const parent = findParent(project, id);
+      const parent = findParent(state.project, id);
       if (!parent) {
         return {}; // root or not found
       }
-      parent.children = parent.children.filter((c) => c.id !== id);
+      const project = updateProjectNode(state.project, parent.id, (copy) => {
+        copy.children = copy.children.filter((child) => child.id !== id);
+      });
+      if (!project) return {};
       return {
         project,
         revision: state.revision + 1,
@@ -547,17 +637,26 @@ export const useEditorStore = create<EditorState>((set) => ({
       if (!state.project || state.selectedIds.length === 0) {
         return {};
       }
-      const project = structuredClone(state.project) as Project;
-      for (const id of state.selectedIds) {
-        const node = findNode(project, id);
-        if (node?.locked) {
-          continue; // locked elements cannot be deleted
-        }
-        const parent = findParent(project, id);
-        if (parent) {
-          parent.children = parent.children.filter((c) => c.id !== id);
-        }
+      const deletable = new Set(
+        state.selectedIds.filter((id) => {
+          const node = findNode(state.project!, id);
+          return (
+            node !== null && !node.locked && findParent(state.project!, id)
+          );
+        }),
+      );
+      if (deletable.size === 0) return {};
+      const parentIds = new Set<string>();
+      for (const id of deletable) {
+        const parent = findParent(state.project, id);
+        if (parent) parentIds.add(parent.id);
       }
+      const project = updateProjectNodes(state.project, parentIds, (parent) => {
+        parent.children = parent.children.filter(
+          (child) => !deletable.has(child.id),
+        );
+      });
+      if (!project) return {};
       // Keep any locked (undeleted) elements selected; drop the rest.
       return {
         project,
@@ -573,9 +672,8 @@ export const useEditorStore = create<EditorState>((set) => ({
       if (!state.project) {
         return {};
       }
-      const project = structuredClone(state.project) as Project;
-      const node = findNode(project, id);
-      const parent = findParent(project, id);
+      const node = findNode(state.project, id);
+      const parent = findParent(state.project, id);
       if (!node || !parent) {
         return {}; // root or not found
       }
@@ -588,8 +686,11 @@ export const useEditorStore = create<EditorState>((set) => ({
         clone.name = `${clone.name} copy`;
       }
 
-      const index = parent.children.findIndex((c) => c.id === id);
-      parent.children.splice(index + 1, 0, clone);
+      const project = updateProjectNode(state.project, parent.id, (copy) => {
+        const index = copy.children.findIndex((child) => child.id === id);
+        copy.children.splice(index + 1, 0, clone);
+      });
+      if (!project) return {};
       return { project, revision: state.revision + 1, selectedIds: [clone.id] };
     }),
 
@@ -598,11 +699,14 @@ export const useEditorStore = create<EditorState>((set) => ({
       if (!state.project || state.selectedIds.length === 0) {
         return {};
       }
-      const project = structuredClone(state.project) as Project;
       const cloneIds: string[] = [];
+      const operations = new Map<
+        string,
+        { sourceId: string; clone: ElementNode }[]
+      >();
       for (const id of state.selectedIds) {
-        const node = findNode(project, id);
-        const parent = findParent(project, id);
+        const node = findNode(state.project, id);
+        const parent = findParent(state.project, id);
         if (!node || !parent) {
           continue;
         }
@@ -613,13 +717,29 @@ export const useEditorStore = create<EditorState>((set) => ({
         if (clone.name) {
           clone.name = `${clone.name} copy`;
         }
-        const index = parent.children.findIndex((c) => c.id === id);
-        parent.children.splice(index + 1, 0, clone);
+        const parentOperations = operations.get(parent.id) ?? [];
+        parentOperations.push({ sourceId: id, clone });
+        operations.set(parent.id, parentOperations);
         cloneIds.push(clone.id);
       }
       if (cloneIds.length === 0) {
         return {};
       }
+      const project = updateProjectNodes(
+        state.project,
+        new Set(operations.keys()),
+        (parent) => {
+          for (const operation of operations.get(parent.id) ?? []) {
+            const index = parent.children.findIndex(
+              (child) => child.id === operation.sourceId,
+            );
+            if (index >= 0) {
+              parent.children.splice(index + 1, 0, operation.clone);
+            }
+          }
+        },
+      );
+      if (!project) return {};
       return { project, revision: state.revision + 1, selectedIds: cloneIds };
     }),
 
@@ -628,13 +748,15 @@ export const useEditorStore = create<EditorState>((set) => ({
       if (!state.project) {
         return {};
       }
-      const project = structuredClone(state.project) as Project;
-      const node = findNode(project, id);
+      const node = findNode(state.project, id);
       if (!node || node.locked) {
         return {};
       }
-      node.x = Math.round(x);
-      node.y = Math.round(y);
+      const project = updateProjectNode(state.project, id, (copy) => {
+        copy.x = Math.round(x);
+        copy.y = Math.round(y);
+      });
+      if (!project) return {};
       return { project, revision: state.revision + 1 };
     }),
 
@@ -647,14 +769,22 @@ export const useEditorStore = create<EditorState>((set) => ({
       ) {
         return {};
       }
-      const project = structuredClone(state.project) as Project;
-      for (const id of state.selectedIds) {
-        const node = findNode(project, id);
-        if (node && !node.locked) {
-          node.x = Math.round(node.x + dx);
-          node.y = Math.round(node.y + dy);
-        }
-      }
+      const movableIds = new Set(
+        state.selectedIds.filter((id) => {
+          const node = findNode(state.project!, id);
+          return node !== null && !node.locked;
+        }),
+      );
+      const mutate = (node: ElementNode) => {
+        node.x = Math.round(node.x + dx);
+        node.y = Math.round(node.y + dy);
+      };
+      const [singleId] = movableIds;
+      const project =
+        movableIds.size === 1 && singleId
+          ? updateProjectNode(state.project, singleId, mutate)
+          : updateProjectNodes(state.project, movableIds, mutate);
+      if (!project) return {};
       return { project, revision: state.revision + 1 };
     }),
 
@@ -663,12 +793,10 @@ export const useEditorStore = create<EditorState>((set) => ({
       if (!state.project || state.selectedIds.length < 2) {
         return {};
       }
-      const project = structuredClone(state.project) as Project;
-
       const items = state.selectedIds
         .map((id) => {
-          const node = findNode(project, id);
-          const abs = getAbsolutePosition(project, id);
+          const node = findNode(state.project!, id);
+          const abs = getAbsolutePosition(state.project!, id);
           // Locked elements are excluded — they neither move nor anchor the layout.
           return node && abs && !node.locked
             ? { node, absX: abs.x, absY: abs.y, w: node.width, h: node.height }
@@ -689,29 +817,33 @@ export const useEditorStore = create<EditorState>((set) => ({
 
       // A node's absolute position equals parentAbs + local, so shifting the
       // absolute edge by a delta means shifting the local coordinate by the same.
+      const positions = new Map<string, { x: number; y: number }>();
       for (const it of items) {
+        let x = it.node.x;
+        let y = it.node.y;
         switch (mode) {
           case "left":
-            it.node.x += minL - it.absX;
+            x += minL - it.absX;
             break;
           case "right":
-            it.node.x += maxR - (it.absX + it.w);
+            x += maxR - (it.absX + it.w);
             break;
           case "hcenter":
-            it.node.x += cx - (it.absX + it.w / 2);
+            x += cx - (it.absX + it.w / 2);
             break;
           case "top":
-            it.node.y += minT - it.absY;
+            y += minT - it.absY;
             break;
           case "bottom":
-            it.node.y += maxB - (it.absY + it.h);
+            y += maxB - (it.absY + it.h);
             break;
           case "vmiddle":
-            it.node.y += cy - (it.absY + it.h / 2);
+            y += cy - (it.absY + it.h / 2);
             break;
           default:
             break;
         }
+        positions.set(it.node.id, { x, y });
       }
 
       if (mode === "distH" && items.length > 2) {
@@ -724,7 +856,10 @@ export const useEditorStore = create<EditorState>((set) => ({
         const gap = (span - totalW) / (sorted.length - 1);
         let cursor = sorted[0].absX;
         for (const it of sorted) {
-          it.node.x += cursor - it.absX;
+          positions.set(it.node.id, {
+            x: it.node.x + cursor - it.absX,
+            y: it.node.y,
+          });
           cursor += it.w + gap;
         }
       } else if (mode === "distV" && items.length > 2) {
@@ -737,15 +872,26 @@ export const useEditorStore = create<EditorState>((set) => ({
         const gap = (span - totalH) / (sorted.length - 1);
         let cursor = sorted[0].absY;
         for (const it of sorted) {
-          it.node.y += cursor - it.absY;
+          positions.set(it.node.id, {
+            x: it.node.x,
+            y: it.node.y + cursor - it.absY,
+          });
           cursor += it.h + gap;
         }
       }
 
-      for (const it of items) {
-        it.node.x = Math.round(it.node.x);
-        it.node.y = Math.round(it.node.y);
-      }
+      const project = updateProjectNodes(
+        state.project,
+        new Set(positions.keys()),
+        (node) => {
+          const position = positions.get(node.id);
+          if (position) {
+            node.x = Math.round(position.x);
+            node.y = Math.round(position.y);
+          }
+        },
+      );
+      if (!project) return {};
 
       return { project, revision: state.revision + 1 };
     }),
@@ -755,15 +901,17 @@ export const useEditorStore = create<EditorState>((set) => ({
       if (!state.project) {
         return {};
       }
-      const project = structuredClone(state.project) as Project;
-      const node = findNode(project, id);
+      const node = findNode(state.project, id);
       if (!node || node.locked) {
         return {};
       }
-      node.x = Math.round(x);
-      node.y = Math.round(y);
-      node.width = Math.round(Math.max(8, width));
-      node.height = Math.round(Math.max(8, height));
+      const project = updateProjectNode(state.project, id, (copy) => {
+        copy.x = Math.round(x);
+        copy.y = Math.round(y);
+        copy.width = Math.round(Math.max(8, width));
+        copy.height = Math.round(Math.max(8, height));
+      });
+      if (!project) return {};
       return { project, revision: state.revision + 1 };
     }),
 
@@ -772,8 +920,7 @@ export const useEditorStore = create<EditorState>((set) => ({
       if (!state.project) {
         return {};
       }
-      const project = structuredClone(state.project) as Project;
-      const node = findNode(project, id);
+      const node = findNode(state.project, id);
       if (!node || node.locked) {
         return {};
       }
@@ -785,7 +932,10 @@ export const useEditorStore = create<EditorState>((set) => ({
       if (deg <= -180) {
         deg += 360;
       }
-      node.rotation = deg;
+      const project = updateProjectNode(state.project, id, (copy) => {
+        copy.rotation = deg;
+      });
+      if (!project) return {};
       return { project, revision: state.revision + 1 };
     }),
 
@@ -798,8 +948,7 @@ export const useEditorStore = create<EditorState>((set) => ({
       ) {
         return {};
       }
-      const project = structuredClone(state.project) as Project;
-      const node = findNode(project, id);
+      const node = findNode(state.project, id);
       if (!node || node.locked) {
         return {};
       }
@@ -810,28 +959,28 @@ export const useEditorStore = create<EditorState>((set) => ({
       const activeBp = state.project.breakpoints.find(
         (b) => b.id === state.breakpointId,
       );
-      if (!activeBp || activeBp.isBase) {
-        if (value === "") {
-          delete node.styles[name];
+      const project = updateProjectNode(state.project, id, (copy) => {
+        if (!activeBp || activeBp.isBase) {
+          if (value === "") {
+            delete copy.styles[name];
+          } else {
+            copy.styles[name] = value;
+          }
         } else {
-          node.styles[name] = value;
+          const layer = copy.responsiveStyles[activeBp.id] ?? {};
+          if (value === "") {
+            delete layer[name];
+          } else {
+            layer[name] = value;
+          }
+          if (Object.keys(layer).length === 0) {
+            delete copy.responsiveStyles[activeBp.id];
+          } else {
+            copy.responsiveStyles[activeBp.id] = layer;
+          }
         }
-      } else {
-        if (!node.responsiveStyles) {
-          node.responsiveStyles = {};
-        }
-        const layer = node.responsiveStyles[activeBp.id] ?? {};
-        if (value === "") {
-          delete layer[name];
-        } else {
-          layer[name] = value;
-        }
-        if (Object.keys(layer).length === 0) {
-          delete node.responsiveStyles[activeBp.id];
-        } else {
-          node.responsiveStyles[activeBp.id] = layer;
-        }
-      }
+      });
+      if (!project) return {};
       return { project, revision: state.revision + 1 };
     }),
 
@@ -840,12 +989,14 @@ export const useEditorStore = create<EditorState>((set) => ({
       if (!state.project) {
         return {};
       }
-      const project = structuredClone(state.project) as Project;
-      const node = findNode(project, id);
+      const node = findNode(state.project, id);
       if (!node || node.locked) {
         return {};
       }
-      node.text = text === "" ? undefined : text;
+      const project = updateProjectNode(state.project, id, (copy) => {
+        copy.text = text === "" ? undefined : text;
+      });
+      if (!project) return {};
       return { project, revision: state.revision + 1 };
     }),
 
@@ -854,23 +1005,21 @@ export const useEditorStore = create<EditorState>((set) => ({
       if (!state.project) {
         return {};
       }
-      const project = structuredClone(state.project) as Project;
-      const node = findNode(project, id);
+      const node = findNode(state.project, id);
       if (!node || node.locked) {
         return {};
       }
-      if (geometry.x != null) {
-        node.x = Math.round(geometry.x);
-      }
-      if (geometry.y != null) {
-        node.y = Math.round(geometry.y);
-      }
-      if (geometry.width != null) {
-        node.width = Math.round(Math.max(1, geometry.width));
-      }
-      if (geometry.height != null) {
-        node.height = Math.round(Math.max(1, geometry.height));
-      }
+      const project = updateProjectNode(state.project, id, (copy) => {
+        if (geometry.x != null) copy.x = Math.round(geometry.x);
+        if (geometry.y != null) copy.y = Math.round(geometry.y);
+        if (geometry.width != null) {
+          copy.width = Math.round(Math.max(1, geometry.width));
+        }
+        if (geometry.height != null) {
+          copy.height = Math.round(Math.max(1, geometry.height));
+        }
+      });
+      if (!project) return {};
       return { project, revision: state.revision + 1 };
     }),
 
@@ -884,18 +1033,28 @@ export const useEditorStore = create<EditorState>((set) => ({
         return {};
       }
 
-      const project = structuredClone(state.project) as Project;
-      const node = findNode(project, id);
-      const oldParent = findParent(project, id);
-      const newParent = findNode(project, newParentId);
+      const node = findNode(state.project, id);
+      const oldParent = findParent(state.project, id);
+      const newParent = findNode(state.project, newParentId);
       if (!node || node.locked || !oldParent || !newParent) {
         return {};
       }
-
-      oldParent.children = oldParent.children.filter((c) => c.id !== id);
-      node.x = Math.round(x);
-      node.y = Math.round(y);
-      newParent.children.push(node);
+      const movedNode = mutableNodeCopy(node, [...node.children]);
+      movedNode.x = Math.round(x);
+      movedNode.y = Math.round(y);
+      const project = updateProjectNodes(
+        state.project,
+        new Set([oldParent.id, newParent.id]),
+        (parent) => {
+          if (parent.id === oldParent.id) {
+            parent.children = parent.children.filter(
+              (child) => child.id !== id,
+            );
+          }
+          if (parent.id === newParent.id) parent.children.push(movedNode);
+        },
+      );
+      if (!project) return {};
       return { project, revision: state.revision + 1 };
     }),
 
@@ -904,12 +1063,14 @@ export const useEditorStore = create<EditorState>((set) => ({
       if (!state.project) {
         return {};
       }
-      const project = structuredClone(state.project) as Project;
-      const node = findNode(project, id);
+      const node = findNode(state.project, id);
       if (!node || node.hidden === hidden) {
         return {};
       }
-      node.hidden = hidden;
+      const project = updateProjectNode(state.project, id, (copy) => {
+        copy.hidden = hidden;
+      });
+      if (!project) return {};
       // A hidden element can't be interacted with, so drop it from the selection.
       return {
         project,
@@ -925,12 +1086,14 @@ export const useEditorStore = create<EditorState>((set) => ({
       if (!state.project) {
         return {};
       }
-      const project = structuredClone(state.project) as Project;
-      const node = findNode(project, id);
+      const node = findNode(state.project, id);
       if (!node || node.locked === locked) {
         return {};
       }
-      node.locked = locked;
+      const project = updateProjectNode(state.project, id, (copy) => {
+        copy.locked = locked;
+      });
+      if (!project) return {};
       return { project, revision: state.revision + 1 };
     }),
 
@@ -939,13 +1102,15 @@ export const useEditorStore = create<EditorState>((set) => ({
       if (!state.project) {
         return {};
       }
-      const project = structuredClone(state.project) as Project;
-      const node = findNode(project, id);
+      const node = findNode(state.project, id);
       if (!node || node.locked) {
         return {};
       }
       const trimmed = name.trim();
-      node.name = trimmed === "" ? undefined : trimmed;
+      const project = updateProjectNode(state.project, id, (copy) => {
+        copy.name = trimmed === "" ? undefined : trimmed;
+      });
+      if (!project) return {};
       return { project, revision: state.revision + 1 };
     }),
 
@@ -958,28 +1123,40 @@ export const useEditorStore = create<EditorState>((set) => ({
       if (isSelfOrDescendant(state.project, id, newParentId)) {
         return {};
       }
-      const project = structuredClone(state.project) as Project;
-      const node = findNode(project, id);
+      const node = findNode(state.project, id);
       if (!node || node.locked) {
         return {};
       }
-      const oldParent = findParent(project, id);
-      const newParent = findNode(project, newParentId);
+      const oldParent = findParent(state.project, id);
+      const newParent = findNode(state.project, newParentId);
       if (!oldParent || !newParent) {
         return {}; // moving a page root, or target not found
       }
       const oldIndex = oldParent.children.findIndex((c) => c.id === id);
-      oldParent.children.splice(oldIndex, 1);
       // Removing an earlier sibling in the same parent shifts the target index down.
       let insertIndex = index;
       if (oldParent === newParent && oldIndex < index) {
         insertIndex -= 1;
       }
-      insertIndex = Math.max(
-        0,
-        Math.min(insertIndex, newParent.children.length),
+      const project = updateProjectNodes(
+        state.project,
+        new Set([oldParent.id, newParent.id]),
+        (parent) => {
+          if (parent.id === oldParent.id) {
+            parent.children = parent.children.filter(
+              (child) => child.id !== id,
+            );
+          }
+          if (parent.id === newParent.id) {
+            const boundedIndex = Math.max(
+              0,
+              Math.min(insertIndex, parent.children.length),
+            );
+            parent.children.splice(boundedIndex, 0, node);
+          }
+        },
       );
-      newParent.children.splice(insertIndex, 0, node);
+      if (!project) return {};
       return { project, revision: state.revision + 1, selectedIds: [id] };
     }),
 
@@ -1000,13 +1177,12 @@ export const useEditorStore = create<EditorState>((set) => ({
         return {};
       }
 
-      const project = structuredClone(src) as Project;
       // Absolute rects, captured before any structural change. Locked members are
       // excluded (grouping would reposition them).
       const members = ids
         .map((id) => {
-          const node = findNode(project, id);
-          const abs = getAbsolutePosition(project, id);
+          const node = findNode(src, id);
+          const abs = getAbsolutePosition(src, id);
           return node && abs && !node.locked
             ? { node, absX: abs.x, absY: abs.y }
             : null;
@@ -1021,11 +1197,11 @@ export const useEditorStore = create<EditorState>((set) => ({
       const maxX = Math.max(...members.map((m) => m.absX + m.node.width));
       const maxY = Math.max(...members.map((m) => m.absY + m.node.height));
 
-      const firstParent = findParent(project, members[0].node.id);
+      const firstParent = findParent(src, members[0].node.id);
       if (!firstParent) {
         return {};
       }
-      const parentAbs = getAbsolutePosition(project, firstParent.id) ?? {
+      const parentAbs = getAbsolutePosition(src, firstParent.id) ?? {
         x: 0,
         y: 0,
       };
@@ -1051,23 +1227,32 @@ export const useEditorStore = create<EditorState>((set) => ({
       };
 
       // Detach each member and re-home it under the group, preserving its position.
-      for (const m of members) {
-        const oldParent = findParent(project, m.node.id);
-        if (oldParent) {
-          oldParent.children = oldParent.children.filter(
-            (c) => c.id !== m.node.id,
-          );
-        }
-        m.node.x = Math.round(m.absX - minX);
-        m.node.y = Math.round(m.absY - minY);
-        group.children.push(m.node);
+      const memberIds = new Set(members.map((member) => member.node.id));
+      const parentIds = new Set<string>([firstParent.id]);
+      for (const member of members) {
+        const oldParent = findParent(src, member.node.id);
+        if (oldParent) parentIds.add(oldParent.id);
+        const groupedNode = mutableNodeCopy(member.node, [
+          ...member.node.children,
+        ]);
+        groupedNode.x = Math.round(member.absX - minX);
+        groupedNode.y = Math.round(member.absY - minY);
+        group.children.push(groupedNode);
       }
 
-      const idx =
-        insertIndex >= 0
-          ? Math.min(insertIndex, firstParent.children.length)
-          : firstParent.children.length;
-      firstParent.children.splice(idx, 0, group);
+      const project = updateProjectNodes(src, parentIds, (parent) => {
+        parent.children = parent.children.filter(
+          (child) => !memberIds.has(child.id),
+        );
+        if (parent.id === firstParent.id) {
+          const idx =
+            insertIndex >= 0
+              ? Math.min(insertIndex, parent.children.length)
+              : parent.children.length;
+          parent.children.splice(idx, 0, group);
+        }
+      });
+      if (!project) return {};
 
       return { project, revision: state.revision + 1, selectedIds: [group.id] };
     }),
@@ -1077,20 +1262,23 @@ export const useEditorStore = create<EditorState>((set) => ({
       if (!state.project) {
         return {};
       }
-      const project = structuredClone(state.project) as Project;
-      const group = findNode(project, id);
-      const parent = findParent(project, id);
+      const group = findNode(state.project, id);
+      const parent = findParent(state.project, id);
       if (!group || group.locked || !parent || group.children.length === 0) {
         return {};
       }
       const groupIndex = parent.children.findIndex((c) => c.id === id);
       // Lift children into the group's parent, converting to the parent's space.
       const lifted = group.children.map((child) => {
-        child.x = Math.round(group.x + child.x);
-        child.y = Math.round(group.y + child.y);
-        return child;
+        const copy = mutableNodeCopy(child, [...child.children]);
+        copy.x = Math.round(group.x + child.x);
+        copy.y = Math.round(group.y + child.y);
+        return copy;
       });
-      parent.children.splice(groupIndex, 1, ...lifted);
+      const project = updateProjectNode(state.project, parent.id, (copy) => {
+        copy.children.splice(groupIndex, 1, ...lifted);
+      });
+      if (!project) return {};
       return {
         project,
         revision: state.revision + 1,
@@ -1100,10 +1288,12 @@ export const useEditorStore = create<EditorState>((set) => ({
 }));
 
 function refreshHistoryAvailability(): void {
-  useEditorStore.setState({
-    canUndo: undoHistory.length > 0,
-    canRedo: redoHistory.length > 0,
-  });
+  const canUndo = undoHistory.length > 0;
+  const canRedo = redoHistory.length > 0;
+  const current = useEditorStore.getState();
+  if (current.canUndo !== canUndo || current.canRedo !== canRedo) {
+    useEditorStore.setState({ canUndo, canRedo });
+  }
 }
 
 function clearEditorHistory(): void {
@@ -1122,10 +1312,10 @@ function applyHistory(direction: "undo" | "redo"): void {
     return;
   }
 
-  destination.push(structuredClone(current.project) as Project);
+  destination.push(current.project);
   applyingHistory = true;
   try {
-    const project = structuredClone(snapshot) as Project;
+    const project = snapshot;
     useEditorStore.setState({
       project,
       revision: current.revision + 1,
@@ -1145,7 +1335,7 @@ useEditorStore.subscribe((state, previous) => {
   }
 
   if (state.revision === previous.revision + 1 && previous.project !== null) {
-    undoHistory.push(structuredClone(previous.project) as Project);
+    undoHistory.push(previous.project);
     if (undoHistory.length > HISTORY_LIMIT) {
       undoHistory.shift();
     }
