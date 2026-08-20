@@ -178,6 +178,32 @@ describe("editorStore", () => {
     );
   });
 
+  it("inserts a component subtree with fresh ids and requested root position", () => {
+    const root = node("template-root", 0, 0, 500, 300);
+    root.type = "Section";
+    root.children = [node("template-child", 20, 20, 100, 40)];
+    const beforeRevision = useEditorStore.getState().revision;
+
+    useEditorStore.getState().insertComponent(root, 123.4, 88.8);
+
+    const state = useEditorStore.getState();
+    const inserted = state.project!.pages[0].root.children.at(-1)!;
+    expect(inserted.id).not.toBe("template-root");
+    expect(inserted.children[0].id).not.toBe("template-child");
+    expect(inserted.x).toBe(123);
+    expect(inserted.y).toBe(89);
+    expect(state.selectedIds).toEqual([inserted.id]);
+    expect(state.revision).toBe(beforeRevision + 1);
+  });
+
+  it("rejects malformed or asset-dependent component trees", () => {
+    const root = node("template-root", 0, 0, 500, 300);
+    root.attributes.src = "Assets/not-canonical.png";
+    const before = useEditorStore.getState().revision;
+    useEditorStore.getState().insertComponent(root, 0, 0);
+    expect(useEditorStore.getState().revision).toBe(before);
+  });
+
   it("alignSelection right makes right edges equal", () => {
     const store = useEditorStore.getState();
     store.selectMany(["a", "b"]);

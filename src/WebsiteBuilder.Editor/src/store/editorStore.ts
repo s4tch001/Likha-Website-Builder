@@ -1,11 +1,17 @@
 import { create } from "zustand";
 import { createElement } from "../model/elementFactory";
-import type { BreakpointDef, ElementNode, Page, Project } from "../model/types";
+import type {
+  BreakpointDef,
+  ElementNode,
+  Page,
+  Project,
+  ProjectAsset,
+} from "../model/types";
 import { createAssetElement } from "../model/assetElements";
-import type { ProjectAsset } from "../model/types";
 import {
   isSafeCssPropertyName,
   isSafeCssValue,
+  isValidElementTree,
 } from "../model/projectValidation";
 
 export const MIN_ZOOM = 10;
@@ -239,6 +245,8 @@ interface EditorState {
   insertElement: (type: string, x: number, y: number) => void;
   /** Inserts an element only when the asset matches current canonical metadata. */
   insertAsset: (asset: ProjectAsset, x: number, y: number) => void;
+  /** Inserts a validated reusable subtree with fresh project-wide ids. */
+  insertComponent: (root: ElementNode, x: number, y: number) => void;
 
   /** Replaces the selection with a single element (or clears it with null). */
   selectElement: (id: string | null) => void;
@@ -446,6 +454,32 @@ export const useEditorStore = create<EditorState>((set) => ({
       }
       parent.children.push(node);
       return { project, revision: state.revision + 1, selectedIds: [node.id] };
+    }),
+
+  insertComponent: (root, x, y) =>
+    set((state) => {
+      if (!state.project || !isValidElementTree(root)) {
+        return {};
+      }
+      const targetId = activeRootId(state);
+      if (!targetId) {
+        return {};
+      }
+      const component = structuredClone(root) as ElementNode;
+      reassignIds(component);
+      component.x = Math.round(Math.max(0, x));
+      component.y = Math.round(Math.max(0, y));
+      const project = structuredClone(state.project) as Project;
+      const parent = findNode(project, targetId);
+      if (!parent) {
+        return {};
+      }
+      parent.children.push(component);
+      return {
+        project,
+        revision: state.revision + 1,
+        selectedIds: [component.id],
+      };
     }),
 
   selectElement: (id) => set({ selectedIds: id ? [id] : [] }),

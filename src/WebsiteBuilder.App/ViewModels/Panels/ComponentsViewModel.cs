@@ -30,7 +30,14 @@ public sealed partial class ComponentsViewModel : ToolViewModel
     {
         if (item is not null)
         {
-            _editor.InsertElement(item.ElementType);
+            if (item.Definition is not null)
+            {
+                _editor.InsertComponent(item.Definition);
+            }
+            else
+            {
+                _editor.InsertElement(item.ElementType);
+            }
         }
     }
 
@@ -49,7 +56,7 @@ public sealed partial class ComponentsViewModel : ToolViewModel
             var items = string.IsNullOrEmpty(query)
                 ? group.Items
                 : group.Items
-                    .Where(i => i.DisplayName.Contains(query, StringComparison.OrdinalIgnoreCase))
+                    .Where(i => i.SearchText.Contains(query, StringComparison.OrdinalIgnoreCase))
                     .ToList();
 
             if (items.Count > 0)

@@ -1,6 +1,6 @@
 import { bridge } from "../bridge/bridge";
 import type { Project } from "../model/types";
-import { isValidProject } from "../model/projectValidation";
+import { isValidElementTree, isValidProject } from "../model/projectValidation";
 import { effectiveStyles } from "../model/responsive";
 import {
   type AlignMode,
@@ -214,6 +214,16 @@ export async function connectHost(): Promise<HostInfo | null> {
       const n = state.revision % 6;
       state.insertAsset(canonical, 80 + n * 24, 80 + n * 24);
     }
+  });
+
+  bridge.on("editor.insertComponent", (payload) => {
+    const root = (payload as { root?: unknown })?.root;
+    if (!isValidElementTree(root)) {
+      return;
+    }
+    const state = useEditorStore.getState();
+    const n = state.revision % 6;
+    state.insertComponent(root, 64 + n * 24, 64 + n * 24);
   });
 
   // Headless verification: drive a move + reparent and report the outcome.

@@ -5,6 +5,7 @@ using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 using WebsiteBuilder.App.Bridge;
 using WebsiteBuilder.Bridge;
+using WebsiteBuilder.Core.Components;
 using WebsiteBuilder.Core.Models;
 using WebsiteBuilder.Core.Serialization;
 using WebsiteBuilder.Core.Services;
@@ -531,6 +532,17 @@ public sealed class EditorSession
         }
 
         _ = _bridge?.PublishAsync("editor.insertAsset", new { asset });
+    }
+
+    /// <summary>Inserts a validated first-party component tree through the host bridge.</summary>
+    public void InsertComponent(ComponentDefinition definition)
+    {
+        ComponentDefinitionValidator.ValidateAndThrow(definition);
+        _ = _bridge?.PublishAsync("editor.insertComponent", new
+        {
+            componentId = definition.Id,
+            root = definition.Root,
+        });
     }
 
     private void RefreshAssetMapping()

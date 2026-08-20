@@ -119,6 +119,41 @@ function validateNodeShape(value: unknown): value is ElementNode {
   );
 }
 
+/** Validates an asset-independent component subtree received over the host bridge. */
+export function isValidElementTree(value: unknown): value is ElementNode {
+  const ids = new Set<string>();
+  const stack: Array<{ node: unknown; depth: number }> = [
+    { node: value, depth: 0 },
+  ];
+  let count = 0;
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (
+      !current ||
+      current.depth > MAX_DEPTH ||
+      !validateNodeShape(current.node) ||
+      ++count > MAX_ELEMENTS ||
+      ids.has(current.node.id)
+    ) {
+      return false;
+    }
+    ids.add(current.node.id);
+    if (
+      Object.entries(current.node.attributes).some(
+        ([name, entry]) =>
+          (name === "src" || name === "href" || name === "poster") &&
+          entry.startsWith("Assets/"),
+      )
+    ) {
+      return false;
+    }
+    for (const child of current.node.children) {
+      stack.push({ node: child, depth: current.depth + 1 });
+    }
+  }
+  return true;
+}
+
 /** Runtime boundary validation for host-provided canonical project snapshots. */
 export function isValidProject(value: unknown): value is Project {
   if (

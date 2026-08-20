@@ -1,3 +1,4 @@
+using WebsiteBuilder.Core.Components;
 using WebsiteBuilder.Core.Models;
 
 namespace WebsiteBuilder.App.Models;
@@ -6,7 +7,19 @@ namespace WebsiteBuilder.App.Models;
 /// <param name="ElementType">Canonical element type id (see <see cref="ElementTypes"/>).</param>
 /// <param name="DisplayName">Label shown in the toolbox.</param>
 /// <param name="Glyph">Short text/emoji glyph used as a lightweight icon.</param>
-public sealed record ComponentItem(string ElementType, string DisplayName, string Glyph);
+public sealed record ComponentItem(
+    string ElementType,
+    string DisplayName,
+    string Glyph,
+    string Description = "",
+    ComponentDefinition? Definition = null)
+{
+    public bool IsBlock => Definition is not null;
+    public string ToolTip => string.IsNullOrEmpty(Description) ? $"Click to add {DisplayName}" : Description;
+    public string SearchText => Definition is null
+        ? $"{DisplayName} {ElementType}"
+        : $"{DisplayName} {Description} {string.Join(' ', Definition.Tags)}";
+}
 
 /// <summary>A named group of toolbox items (e.g. "Layout", "Typography").</summary>
 public sealed record ComponentGroup(string Name, IReadOnlyList<ComponentItem> Items);
@@ -21,6 +34,14 @@ public static class ComponentCatalog
 {
     public static IReadOnlyList<ComponentGroup> Groups { get; } = new[]
     {
+        new ComponentGroup("Blocks", BuiltInComponentLibrary.All
+            .Select(definition => new ComponentItem(
+                definition.Root.Type,
+                definition.Name,
+                definition.Glyph,
+                definition.Description,
+                definition))
+            .ToArray()),
         new ComponentGroup("Layout", new[]
         {
             new ComponentItem(ElementTypes.Section, "Section", "▭"),

@@ -192,7 +192,7 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
 
 ---
 
-## 5. ✅ DONE (Phases 1–13 + migrations M1–M3f; 0/0 build, 73 C# + 39 editor tests)
+## 5. ✅ DONE (Phases 1–13 + 14a + migrations M1–M3f; 0/0 build, 75 C# + 41 editor tests)
 
 - **Phase 1 — Scaffolding.** Solution, 5 src + 2 test projects, Project JSON model
   (ElementNode/Page/Project/Breakpoint), ProjectSerializer, and service interfaces.
@@ -268,6 +268,14 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
   CSP allows only the dedicated managed-asset origin for editor images/media/fonts. Focused
   Core/editor/codegen tests cover canonical insertion, spoof rejection, font URLs, nested export
   paths, usage tracking, and atomic binary replacement.
+- **Phase 14a — component definition/catalog foundation (2026-08-20).** Added a compiled,
+  first-party Core component contract and validator, a searchable Blocks category in the WPF
+  Components panel, and dedicated `editor.insertComponent` bridge/store handling. Component
+  trees are validated on both sides of the bridge, cannot carry implicit managed-asset paths,
+  are deep-cloned with fresh IDs, positioned as one subtree, selected, and synchronized as one
+  revision. `Simple Hero` proves the end-to-end path. ADR 0001 records why inserted blocks become
+  ordinary elements instead of persisted live template references. Focused tests cover catalog
+  validation, unsafe definitions, fresh IDs, atomic insertion, and spoof rejection.
 - **Migration M3a — repository safety baseline (2026-08-20).** Initialized Git on `main`,
   normalized repository text to LF through `.gitattributes` + `.editorconfig`, expanded ignore
   rules for generated build/typecheck/coverage output, local agent settings, environment files,
@@ -314,8 +322,9 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
 
 ## 6. ⛔ NOT DONE — Phase 14 onward
 
-- **Phase 14 — Component library.** Prebuilt blocks (Navbar, Hero, Pricing, Testimonials,
-  FAQ, Forms, Footer, 404, landing pages…) insertable onto the canvas.
+- **Phase 14 — Component library (14a complete).** Remaining planned splits: 14b navigation,
+  hero, footer, and 404 blocks; 14c pricing, testimonials, FAQ, and form blocks; 14d complete
+  landing-page assemblies plus component-browser drag/drop and visual preview polish.
 - **Phase 15 — Undo/Redo integration.** `UndoRedoService` exists but NO mutations push
   commands yet. Wire editor mutations (and host edits) through the command/undo stack so
   Ctrl+Z/Y work. The Edit ribbon Undo/Redo are bound but currently no-op (empty stack).
@@ -355,7 +364,7 @@ rule). Today's date context in prior sessions was 2026-06; convert relative date
 
 ## 8. Suggested first action in the new session
 
-Continue with **Phase 14a — component definition/catalog foundation**. The user explicitly
+Continue with **Phase 14b — navigation, hero, footer, and 404 blocks**. The user explicitly
 asked Codex to continue through later phases/sub-phases and to update this handoff after every
 completed sub-phase, stopping work when remaining Codex usage reaches 10%. Preserve the Phase
 13 canonical-asset boundary plus the M3 revision, validation, persistence, coverage, and
