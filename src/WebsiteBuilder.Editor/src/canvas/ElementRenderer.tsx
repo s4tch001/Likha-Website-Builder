@@ -131,6 +131,51 @@ export default function ElementRenderer({
       </a>
     );
   }
+  if (node.type === "Button") {
+    return (
+      <button
+        {...common}
+        type={node.attributes.type === "submit" ? "submit" : "button"}
+        onClick={(event) => event.preventDefault()}
+      >
+        {node.text ? (
+          <span className="wb-element-text">{node.text}</span>
+        ) : null}
+      </button>
+    );
+  }
+  if (node.type === "Input") {
+    return (
+      <input
+        {...common}
+        type={node.attributes.type ?? "text"}
+        name={node.attributes.name}
+        placeholder={node.attributes.placeholder}
+        aria-label={node.name ?? node.attributes.name ?? "Input"}
+        readOnly
+      />
+    );
+  }
+  if (node.type === "Textarea") {
+    return (
+      <textarea
+        {...common}
+        name={node.attributes.name}
+        placeholder={node.attributes.placeholder}
+        aria-label={node.name ?? node.attributes.name ?? "Textarea"}
+        readOnly
+      />
+    );
+  }
+  if (node.type === "Form") {
+    return (
+      <form {...common} onSubmit={(event) => event.preventDefault()}>
+        {node.children.map((child) => (
+          <ElementRenderer key={child.id} node={child} />
+        ))}
+      </form>
+    );
+  }
 
   return (
     <div {...common}>

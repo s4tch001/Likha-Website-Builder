@@ -16,6 +16,10 @@ public sealed class ComponentDefinitionTests
         Assert.Contains(definitions, definition => definition.Id == "hero-split");
         Assert.Contains(definitions, definition => definition.Id == "footer-multicolumn");
         Assert.Contains(definitions, definition => definition.Id == "page-404-centered");
+        Assert.Contains(definitions, definition => definition.Id == "pricing-three-tier");
+        Assert.Contains(definitions, definition => definition.Id == "testimonials-three-card");
+        Assert.Contains(definitions, definition => definition.Id == "faq-stacked");
+        Assert.Contains(definitions, definition => definition.Id == "form-contact");
         Assert.Equal(definitions.Count, definitions.Select(item => item.Id).Distinct().Count());
         foreach (var definition in definitions)
         {

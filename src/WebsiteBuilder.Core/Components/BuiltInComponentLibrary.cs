@@ -16,6 +16,10 @@ public static class BuiltInComponentLibrary
             BuildSplitHero(),
             BuildFooter(),
             BuildNotFound(),
+            BuildPricing(),
+            BuildTestimonials(),
+            BuildFaq(),
+            BuildContactForm(),
         ];
         var ids = new HashSet<string>(StringComparer.Ordinal);
         foreach (var definition in definitions)
@@ -284,6 +288,293 @@ public static class BuiltInComponentLibrary
                 },
             },
         });
+
+    private static ComponentDefinition BuildPricing() => new(
+        "pricing-three-tier",
+        "Three-tier Pricing",
+        "Pricing",
+        "Three clear plans with a highlighted recommended tier.",
+        "$",
+        ["pricing", "plans", "subscription", "saas", "conversion"],
+        new ElementNode
+        {
+            Id = "tpl-pricing",
+            Type = ElementTypes.Section,
+            Name = "Three-tier Pricing",
+            Width = 1100,
+            Height = 700,
+            Styles = { ["background"] = "#f8fafc", ["border-radius"] = "24px" },
+            ResponsiveStyles = { ["mobile"] = new() { ["height"] = "1500px" } },
+            Children =
+            {
+                TextNode("tpl-pricing-title", ElementTypes.Heading, "Pricing Title", 230, 58, 640, 56,
+                    "Pricing that grows with you", ("color", "#0f172a"), ("font-size", "40px"),
+                    ("font-weight", "780"), ("text-align", "center")),
+                TextNode("tpl-pricing-copy", ElementTypes.Paragraph, "Pricing Copy", 280, 126, 540, 52,
+                    "Start small, upgrade when the work demands it, and cancel whenever you need.",
+                    ("color", "#64748b"), ("font-size", "16px"), ("line-height", "1.5"), ("text-align", "center")),
+                PricingCard("starter", 52, 216, 32, "Starter", "$12", "For personal projects", false),
+                PricingCard("growth", 386, 196, 470, "Growth", "$29", "For teams shipping weekly", true),
+                PricingCard("scale", 720, 216, 908, "Scale", "$79", "For ambitious organizations", false),
+            },
+        });
+
+    private static ComponentDefinition BuildTestimonials() => new(
+        "testimonials-three-card",
+        "Three Testimonials",
+        "Social Proof",
+        "A headline and three concise customer stories.",
+        "❝",
+        ["testimonials", "reviews", "quotes", "customers", "social proof"],
+        new ElementNode
+        {
+            Id = "tpl-testimonials",
+            Type = ElementTypes.Section,
+            Name = "Three Testimonials",
+            Width = 1100,
+            Height = 560,
+            Styles = { ["background"] = "#0f172a", ["border-radius"] = "24px" },
+            ResponsiveStyles = { ["mobile"] = new() { ["height"] = "1080px" } },
+            Children =
+            {
+                TextNode("tpl-testimonials-kicker", ElementTypes.Text, "Section Label", 72, 60, 280, 22,
+                    "CUSTOMER STORIES", ("color", "#60a5fa"), ("font-size", "12px"),
+                    ("font-weight", "750"), ("letter-spacing", "1.3px")),
+                TextNode("tpl-testimonials-title", ElementTypes.Heading, "Section Title", 72, 98, 700, 60,
+                    "Trusted by teams who care about craft", ("color", "#ffffff"),
+                    ("font-size", "38px"), ("font-weight", "760")),
+                TestimonialCard("maya", 54, 208, 208, "“We moved from scattered drafts to a launch-ready page in an afternoon.”", "Maya Chen", "Product lead"),
+                TestimonialCard("jon", 386, 208, 490, "“The exported code was clean enough that our developers picked it up immediately.”", "Jon Bell", "Engineering manager"),
+                TestimonialCard("ana", 718, 208, 772, "“Responsive editing finally feels direct instead of being a chain of compromises.”", "Ana Reyes", "Independent designer"),
+            },
+        });
+
+    private static ComponentDefinition BuildFaq() => new(
+        "faq-stacked",
+        "Stacked FAQ",
+        "FAQ",
+        "Four answer cards for common product or service questions.",
+        "?",
+        ["faq", "questions", "answers", "support", "accordion"],
+        new ElementNode
+        {
+            Id = "tpl-faq",
+            Type = ElementTypes.Section,
+            Name = "Stacked FAQ",
+            Width = 1000,
+            Height = 720,
+            Styles = { ["background"] = "#ffffff", ["border"] = "1px solid #e2e8f0", ["border-radius"] = "22px" },
+            Children =
+            {
+                TextNode("tpl-faq-title", ElementTypes.Heading, "FAQ Title", 64, 54, 560, 54,
+                    "Questions, answered", ("color", "#0f172a"), ("font-size", "38px"), ("font-weight", "780")),
+                TextNode("tpl-faq-copy", ElementTypes.Paragraph, "FAQ Intro", 64, 116, 650, 52,
+                    "Everything you need to know before starting your next project.",
+                    ("color", "#64748b"), ("font-size", "16px"), ("line-height", "1.5")),
+                FaqItem("first", 200, "Can I edit every part of a block?", "Yes. Once inserted, a block is an ordinary element tree. Rename, restyle, move, or remove any child."),
+                FaqItem("second", 320, "Will the design remain responsive?", "Built-in blocks include mobile overrides, and you can refine each breakpoint in the inspector."),
+                FaqItem("third", 440, "Which export formats are supported?", "Generate a static HTML site or a strict Next.js App Router project from the same design."),
+                FaqItem("fourth", 560, "Can I use my own assets and fonts?", "Import validated project assets, drag media into the canvas, and apply managed fonts to any selection."),
+            },
+        });
+
+    private static ComponentDefinition BuildContactForm() => new(
+        "form-contact",
+        "Contact Form",
+        "Forms",
+        "Accessible contact form layout with name, email, message, and submit action.",
+        "✉",
+        ["form", "contact", "lead", "email", "message"],
+        new ElementNode
+        {
+            Id = "tpl-contact",
+            Type = ElementTypes.Section,
+            Name = "Contact Form Section",
+            Width = 1000,
+            Height = 650,
+            Styles = { ["background"] = "linear-gradient(145deg, #eff6ff, #f8fafc)", ["border-radius"] = "24px" },
+            ResponsiveStyles = { ["mobile"] = new() { ["height"] = "820px" } },
+            Children =
+            {
+                TextNode("tpl-contact-title", ElementTypes.Heading, "Contact Title", 58, 70, 360, 108,
+                    "Tell us what you want to build", ("color", "#0f172a"), ("font-size", "42px"),
+                    ("font-weight", "780"), ("line-height", "1.12")),
+                TextNode("tpl-contact-copy", ElementTypes.Paragraph, "Contact Copy", 58, 198, 350, 96,
+                    "Share the goal, the timeline, and what success looks like. We will reply within two business days.",
+                    ("color", "#64748b"), ("font-size", "16px"), ("line-height", "1.6")),
+                new ElementNode
+                {
+                    Id = "tpl-contact-form", Type = ElementTypes.Form, Name = "Contact Form",
+                    X = 486, Y = 54, Width = 456, Height = 542,
+                    Attributes = { ["method"] = "post" },
+                    Styles =
+                    {
+                        ["background"] = "#ffffff", ["border"] = "1px solid #dbeafe",
+                        ["border-radius"] = "18px", ["box-shadow"] = "0 24px 50px rgba(37, 99, 235, 0.12)",
+                    },
+                    ResponsiveStyles = { ["mobile"] = new() { ["left"] = "58px", ["top"] = "310px" } },
+                    Children =
+                    {
+                        TextNode("tpl-contact-name-label", ElementTypes.Text, "Name Label", 32, 30, 180, 22, "Name",
+                            ("color", "#334155"), ("font-size", "14px"), ("font-weight", "650")),
+                        InputNode("tpl-contact-name", "Name Input", 32, 60, 392, "name", "Your name", "text"),
+                        TextNode("tpl-contact-email-label", ElementTypes.Text, "Email Label", 32, 132, 180, 22, "Email",
+                            ("color", "#334155"), ("font-size", "14px"), ("font-weight", "650")),
+                        InputNode("tpl-contact-email", "Email Input", 32, 162, 392, "email", "you@example.com", "email"),
+                        TextNode("tpl-contact-message-label", ElementTypes.Text, "Message Label", 32, 234, 180, 22, "Message",
+                            ("color", "#334155"), ("font-size", "14px"), ("font-weight", "650")),
+                        new ElementNode
+                        {
+                            Id = "tpl-contact-message", Type = ElementTypes.Textarea, Name = "Message Input",
+                            X = 32, Y = 264, Width = 392, Height = 130,
+                            Attributes = { ["name"] = "message", ["placeholder"] = "Tell us about the project", ["required"] = "true" },
+                            Styles =
+                            {
+                                ["background"] = "#ffffff", ["border"] = "1px solid #cbd5e1", ["border-radius"] = "9px",
+                                ["color"] = "#0f172a", ["font-size"] = "15px", ["padding"] = "12px", ["resize"] = "none",
+                            },
+                        },
+                        new ElementNode
+                        {
+                            Id = "tpl-contact-submit", Type = ElementTypes.Button, Name = "Submit Button",
+                            X = 32, Y = 426, Width = 392, Height = 50, Text = "Send inquiry",
+                            Attributes = { ["type"] = "submit" },
+                            Styles =
+                            {
+                                ["background"] = "#2563eb", ["border"] = "0", ["border-radius"] = "9px",
+                                ["color"] = "#ffffff", ["font-size"] = "15px", ["font-weight"] = "700",
+                            },
+                        },
+                    },
+                },
+            },
+        });
+
+    private static ElementNode PricingCard(
+        string suffix,
+        double x,
+        double y,
+        double mobileTop,
+        string title,
+        string price,
+        string description,
+        bool featured) => new()
+        {
+            Id = $"tpl-pricing-{suffix}",
+            Type = ElementTypes.Card,
+            Name = $"{title} Plan",
+            X = x,
+            Y = y,
+            Width = 310,
+            Height = featured ? 430 : 410,
+            Styles =
+            {
+                ["background"] = featured ? "#1e3a8a" : "#ffffff",
+                ["border"] = featured ? "1px solid #2563eb" : "1px solid #e2e8f0",
+                ["border-radius"] = "18px",
+                ["box-shadow"] = featured ? "0 24px 50px rgba(37, 99, 235, 0.2)" : "0 12px 30px rgba(15, 23, 42, 0.06)",
+            },
+            ResponsiveStyles = { ["mobile"] = new() { ["left"] = "52px", ["top"] = $"{mobileTop}px" } },
+            Children =
+            {
+                TextNode($"tpl-pricing-{suffix}-name", ElementTypes.Heading, "Plan Name", 28, 30, 240, 34, title,
+                    ("color", featured ? "#ffffff" : "#0f172a"), ("font-size", "22px"), ("font-weight", "750")),
+                TextNode($"tpl-pricing-{suffix}-price", ElementTypes.Heading, "Plan Price", 28, 88, 240, 62, price,
+                    ("color", featured ? "#bfdbfe" : "#2563eb"), ("font-size", "48px"), ("font-weight", "800")),
+                TextNode($"tpl-pricing-{suffix}-copy", ElementTypes.Paragraph, "Plan Description", 28, 164, 250, 56, description,
+                    ("color", featured ? "#cbd5e1" : "#64748b"), ("font-size", "15px"), ("line-height", "1.5")),
+                TextNode($"tpl-pricing-{suffix}-features", ElementTypes.Paragraph, "Plan Features", 28, 238, 250, 82,
+                    "✓ Unlimited drafts\n✓ Responsive export\n✓ Project assets",
+                    ("color", featured ? "#dbeafe" : "#334155"), ("font-size", "14px"), ("line-height", "1.8"), ("white-space", "pre-line")),
+                new ElementNode
+                {
+                    Id = $"tpl-pricing-{suffix}-action", Type = ElementTypes.Link, Name = "Choose Plan",
+                    X = 28, Y = featured ? 350 : 330, Width = 254, Height = 48, Text = featured ? "Choose Growth" : $"Choose {title}",
+                    Attributes = { ["href"] = "#contact" },
+                    Styles =
+                    {
+                        ["background"] = featured ? "#ffffff" : "#0f172a", ["color"] = featured ? "#1e3a8a" : "#ffffff",
+                        ["border-radius"] = "9px", ["font-size"] = "14px", ["font-weight"] = "700",
+                        ["text-decoration"] = "none", ["display"] = "flex", ["align-items"] = "center", ["justify-content"] = "center",
+                    },
+                },
+            },
+        };
+
+    private static ElementNode TestimonialCard(
+        string suffix,
+        double x,
+        double y,
+        double mobileTop,
+        string quote,
+        string author,
+        string role) => new()
+        {
+            Id = $"tpl-testimonial-{suffix}",
+            Type = ElementTypes.Card,
+            Name = $"{author} Testimonial",
+            X = x,
+            Y = y,
+            Width = 312,
+            Height = 278,
+            Styles = { ["background"] = "#1e293b", ["border"] = "1px solid #334155", ["border-radius"] = "16px" },
+            ResponsiveStyles = { ["mobile"] = new() { ["left"] = "54px", ["top"] = $"{mobileTop}px" } },
+            Children =
+            {
+                TextNode($"tpl-testimonial-{suffix}-mark", ElementTypes.Text, "Quote Mark", 24, 22, 50, 42, "“",
+                    ("color", "#60a5fa"), ("font-size", "42px"), ("font-weight", "800")),
+                TextNode($"tpl-testimonial-{suffix}-quote", ElementTypes.Paragraph, "Quote", 24, 76, 264, 112, quote,
+                    ("color", "#e2e8f0"), ("font-size", "16px"), ("line-height", "1.55")),
+                TextNode($"tpl-testimonial-{suffix}-author", ElementTypes.Text, "Author", 24, 214, 180, 22, author,
+                    ("color", "#ffffff"), ("font-size", "14px"), ("font-weight", "700")),
+                TextNode($"tpl-testimonial-{suffix}-role", ElementTypes.Text, "Role", 24, 240, 220, 20, role,
+                    ("color", "#64748b"), ("font-size", "13px")),
+            },
+        };
+
+    private static ElementNode FaqItem(string suffix, double y, string question, string answer) => new()
+    {
+        Id = $"tpl-faq-{suffix}",
+        Type = ElementTypes.Card,
+        Name = question,
+        X = 64,
+        Y = y,
+        Width = 872,
+        Height = 96,
+        Styles = { ["background"] = "#f8fafc", ["border"] = "1px solid #e2e8f0", ["border-radius"] = "12px" },
+        Children =
+        {
+            TextNode($"tpl-faq-{suffix}-question", ElementTypes.Heading, "Question", 22, 16, 820, 28, question,
+                ("color", "#0f172a"), ("font-size", "17px"), ("font-weight", "700")),
+            TextNode($"tpl-faq-{suffix}-answer", ElementTypes.Paragraph, "Answer", 22, 48, 820, 40, answer,
+                ("color", "#64748b"), ("font-size", "14px"), ("line-height", "1.45")),
+        },
+    };
+
+    private static ElementNode InputNode(
+        string id,
+        string name,
+        double x,
+        double y,
+        double width,
+        string fieldName,
+        string placeholder,
+        string type) => new()
+        {
+            Id = id,
+            Type = ElementTypes.Input,
+            Name = name,
+            X = x,
+            Y = y,
+            Width = width,
+            Height = 46,
+            Attributes = { ["name"] = fieldName, ["placeholder"] = placeholder, ["type"] = type, ["required"] = "true" },
+            Styles =
+            {
+                ["background"] = "#ffffff", ["border"] = "1px solid #cbd5e1", ["border-radius"] = "9px",
+                ["color"] = "#0f172a", ["font-size"] = "15px", ["padding"] = "0 12px",
+            },
+        };
 
     private static ElementNode TextNode(
         string id,
