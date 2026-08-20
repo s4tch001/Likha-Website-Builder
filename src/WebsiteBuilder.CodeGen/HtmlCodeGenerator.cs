@@ -75,19 +75,25 @@ public sealed class HtmlCodeGenerator : ICodeGenerator
         sb.Append($"  <script src=\"{relativePrefix}{ScriptPath}\" defer></script>\n");
         sb.Append("</head>\n");
         sb.Append("<body>\n");
-        AppendElement(sb, page.Root, depth: 1, rootClass: WebStyleSheet.RootClass(page), sheet);
+        AppendElement(sb, page.Root, depth: 1, rootClass: WebStyleSheet.RootClass(page), sheet, relativePrefix);
         sb.Append("</body>\n");
         sb.Append("</html>\n");
         return sb.ToString();
     }
 
-    private static void AppendElement(StringBuilder sb, ElementNode node, int depth, string? rootClass, WebStyleSheet sheet)
+    private static void AppendElement(
+        StringBuilder sb,
+        ElementNode node,
+        int depth,
+        string? rootClass,
+        WebStyleSheet sheet,
+        string relativePrefix)
     {
         var isRoot = rootClass is not null;
         var indent = new string(' ', depth * 2);
         var tag = HtmlTags.TagFor(node.Type);
         var className = isRoot ? rootClass! : sheet.ElementClass(node);
-        var attributes = BuildAttributes(node, className);
+        var attributes = BuildAttributes(node, className, relativePrefix);
 
         if (HtmlTags.IsVoid(tag))
         {
@@ -110,7 +116,7 @@ public sealed class HtmlCodeGenerator : ICodeGenerator
             sb.Append('\n');
             foreach (var child in node.Children)
             {
-                AppendElement(sb, child, depth + 1, rootClass: null, sheet);
+                AppendElement(sb, child, depth + 1, rootClass: null, sheet, relativePrefix);
             }
 
             sb.Append(indent);
@@ -119,7 +125,7 @@ public sealed class HtmlCodeGenerator : ICodeGenerator
         sb.Append("</").Append(tag).Append(">\n");
     }
 
-    private static string BuildAttributes(ElementNode node, string className)
+    private static string BuildAttributes(ElementNode node, string className, string relativePrefix)
     {
         var sb = new StringBuilder();
         sb.Append(" class=\"").Append(className).Append('"');
@@ -131,10 +137,18 @@ public sealed class HtmlCodeGenerator : ICodeGenerator
                 continue;
             }
 
-            sb.Append(' ').Append(name).Append("=\"").Append(WebUtility.HtmlEncode(value)).Append('"');
+            var outputValue = IsAssetUrlAttribute(name) && value.StartsWith("Assets/", StringComparison.Ordinal)
+                ? relativePrefix + value
+                : value;
+            sb.Append(' ').Append(name).Append("=\"").Append(WebUtility.HtmlEncode(outputValue)).Append('"');
         }
 
         return sb.ToString();
     }
+
+    private static bool IsAssetUrlAttribute(string name) =>
+        name.Equals("src", StringComparison.OrdinalIgnoreCase)
+        || name.Equals("href", StringComparison.OrdinalIgnoreCase)
+        || name.Equals("poster", StringComparison.OrdinalIgnoreCase);
 
 }

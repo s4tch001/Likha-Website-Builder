@@ -195,6 +195,65 @@ public class ReactCodeGeneratorTests
         Assert.Contains("X-Content-Type-Options: nosniff", headers);
     }
 
+    [Fact]
+    public void ManagedAssets_UsePublicUrlsAndFontFace()
+    {
+        var project = BuildProject();
+        project.Assets.Add(new ProjectAsset
+        {
+            Id = "font123",
+            Name = "Site font",
+            StoredFileName = "site.woff2",
+            RelativePath = "Assets/site.woff2",
+            Kind = AssetKinds.Font,
+            MediaType = "font/woff2",
+            SizeBytes = 1,
+            Sha256 = new string('a', 64),
+        });
+        project.Assets.Add(new ProjectAsset
+        {
+            Id = "track",
+            Name = "track.mp3",
+            StoredFileName = "track.mp3",
+            RelativePath = "Assets/track.mp3",
+            Kind = AssetKinds.Audio,
+            MediaType = "audio/mpeg",
+            SizeBytes = 1,
+            Sha256 = new string('b', 64),
+        });
+        project.Assets.Add(new ProjectAsset
+        {
+            Id = "manual",
+            Name = "manual.pdf",
+            StoredFileName = "manual.pdf",
+            RelativePath = "Assets/manual.pdf",
+            Kind = AssetKinds.Document,
+            MediaType = "application/pdf",
+            SizeBytes = 1,
+            Sha256 = new string('c', 64),
+        });
+        project.Pages[0].Root.Children.Add(new ElementNode
+        {
+            Id = "track",
+            Type = ElementTypes.Audio,
+            Attributes = { ["src"] = "Assets/track.mp3", ["controls"] = "true" },
+        });
+        project.Pages[0].Root.Children.Add(new ElementNode
+        {
+            Id = "manual",
+            Type = ElementTypes.Link,
+            Text = "Manual",
+            Attributes = { ["href"] = "Assets/manual.pdf", ["download"] = "manual.pdf" },
+        });
+
+        var page = FileContents(project, "app/page.tsx");
+        var css = FileContents(project, "app/globals.css");
+        Assert.Contains("src=\"/Assets/track.mp3\"", page);
+        Assert.Contains("href=\"/Assets/manual.pdf\"", page);
+        Assert.Contains("url('/Assets/site.woff2')", css);
+        Assert.Contains("font-family: 'LikhaAsset_font123'", css);
+    }
+
     private static string FileContents(Project project, string relativePath) =>
         new ReactCodeGenerator().Generate(project)
             .Single(file => file.RelativePath == relativePath)

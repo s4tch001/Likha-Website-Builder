@@ -4,59 +4,83 @@
              xmlns:vm="clr-namespace:WebsiteBuilder.App.ViewModels.Panels"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d"
-             d:DataContext="{d:DesignInstance Type=vm:AssetsViewModel}"
+             mc:Ignorable="d" d:DataContext="{d:DesignInstance Type=vm:AssetsViewModel}"
              Background="{StaticResource App.Surface}">
     <DockPanel>
         <TextBlock DockPanel.Dock="Top" Style="{StaticResource PanelHeaderText}" Text="ASSETS" />
-
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="6,2,6,4">
-            <Button Content="Import" Style="{StaticResource RibbonButton}"
-                    ToolTip="Import files into the project's Assets folder"
-                    Command="{Binding ImportCommand}" />
+        <StackPanel DockPanel.Dock="Top" Margin="6,2,6,5">
+            <DockPanel Margin="0,0,0,4">
+                <Button DockPanel.Dock="Right" Content="Import" Style="{StaticResource RibbonButton}"
+                        ToolTip="Import validated files into the project's Assets folder" Command="{Binding ImportCommand}" />
+                <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                         Margin="0,0,5,0" Padding="6,3" ToolTip="Search assets" />
+            </DockPanel>
+            <ComboBox ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}" Padding="4,2" />
         </StackPanel>
-
-        <TextBlock DockPanel.Dock="Bottom" Style="{StaticResource MutedText}"
-                   Text="{Binding Status}" FontSize="11" Margin="6,2,6,4" TextWrapping="Wrap" />
-
+        <TextBlock DockPanel.Dock="Bottom" Style="{StaticResource MutedText}" Text="{Binding Status}"
+                   FontSize="11" Margin="6,3,6,5" TextWrapping="Wrap" />
+        <Border DockPanel.Dock="Bottom" BorderBrush="{StaticResource App.Border}" BorderThickness="0,1,0,0"
+                Padding="7" MinHeight="118">
+            <Grid DataContext="{Binding SelectedAsset}"
+                  Visibility="{Binding DataContext.HasSelectedAsset, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVis}}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <DockPanel Grid.Row="0">
+                    <TextBlock Text="{Binding Name, TargetNullValue=Select an asset}" FontWeight="SemiBold"
+                               Foreground="{StaticResource App.Foreground}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock DockPanel.Dock="Right" Text="{Binding Kind}" Foreground="#9CC3FF" />
+                </DockPanel>
+                <TextBlock Grid.Row="1" Text="{Binding MediaType}" Style="{StaticResource MutedText}" Margin="0,3,0,0" />
+                <TextBlock Grid.Row="2" Style="{StaticResource MutedText}" Margin="0,2,0,5" TextTrimming="CharacterEllipsis">
+                    <Run Text="{Binding Size}" /><Run Text=" · " /><Run Text="{Binding Imported}" />
+                </TextBlock>
+                <StackPanel Grid.Row="3" Orientation="Horizontal">
+                    <Button Content="{Binding ActionLabel}" Style="{StaticResource RibbonButton}"
+                            Command="{Binding DataContext.UseCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            CommandParameter="{Binding}" />
+                    <Button Content="Delete" Margin="4,0,0,0" Style="{StaticResource RibbonButton}"
+                            Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            CommandParameter="{Binding}" />
+                </StackPanel>
+            </Grid>
+        </Border>
         <Grid>
-            <ListBox ItemsSource="{Binding Assets}"
-                     Background="Transparent" BorderThickness="0"
-                     HorizontalContentAlignment="Stretch"
-                     Foreground="{StaticResource App.Foreground}">
+            <ListBox x:Name="AssetList" ItemsSource="{Binding FilteredAssets}" SelectedItem="{Binding SelectedAsset}"
+                     Background="Transparent" BorderThickness="0" Padding="3"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     PreviewMouseLeftButtonDown="AssetList_OnPreviewMouseLeftButtonDown"
+                     PreviewMouseMove="AssetList_OnPreviewMouseMove" MouseDoubleClick="AssetList_OnMouseDoubleClick">
+                <ListBox.ItemsPanel><ItemsPanelTemplate><WrapPanel IsItemsHost="True" /></ItemsPanelTemplate></ListBox.ItemsPanel>
                 <ListBox.ItemTemplate>
                     <DataTemplate>
-                        <Grid Margin="2,1">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-
-                            <Border Grid.Column="0" Background="#2C3340" CornerRadius="3"
-                                    Padding="5,1" Margin="0,0,6,0" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding Kind}" FontSize="10" Foreground="#9CC3FF" />
-                            </Border>
-
-                            <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center"
-                                       TextTrimming="CharacterEllipsis"
-                                       Foreground="{StaticResource App.Foreground}"
-                                       ToolTip="{Binding RelativePath}" />
-
-                            <Button Grid.Column="2" Content="✕" Width="20" Height="20" Padding="0" FontSize="11"
-                                    Style="{StaticResource RibbonButton}" ToolTip="Delete asset"
-                                    Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                    CommandParameter="{Binding}" />
-                        </Grid>
+                        <Border Width="105" Height="112" Margin="3" Padding="5" CornerRadius="5"
+                                Background="#222229" BorderBrush="{StaticResource App.Border}" BorderThickness="1">
+                            <Grid>
+                                <Grid.RowDefinitions><RowDefinition Height="76" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                                <Border Background="#17171C" CornerRadius="3">
+                                    <Grid>
+                                        <TextBlock Text="{Binding Glyph}" FontSize="22" Foreground="#8291A8"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        <Image Source="{Binding Converter={StaticResource AssetThumbnail}}" Stretch="Uniform" Margin="2" />
+                                    </Grid>
+                                </Border>
+                                <StackPanel Grid.Row="1" Margin="0,4,0,0">
+                                    <TextBlock Text="{Binding Name}" Foreground="{StaticResource App.Foreground}"
+                                               TextTrimming="CharacterEllipsis" FontSize="11" ToolTip="{Binding RelativePath}" />
+                                    <TextBlock Text="{Binding Kind}" Foreground="{StaticResource App.ForegroundMuted}" FontSize="9" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
-
-            <TextBlock Style="{StaticResource MutedText}"
-                       Text="No assets yet. Click Import to add images, video, fonts…"
-                       HorizontalAlignment="Center" VerticalAlignment="Center"
-                       TextAlignment="Center" TextWrapping="Wrap" Margin="16"
-                       Visibility="{Binding Assets.Count, Converter={StaticResource ZeroToVis}}" />
+            <TextBlock Text="No matching assets. Import a file or change the filters."
+                       Style="{StaticResource MutedText}" TextAlignment="Center" TextWrapping="Wrap"
+                       Margin="16" HorizontalAlignment="Center" VerticalAlignment="Center"
+                       IsHitTestVisible="False"
+                       Visibility="{Binding FilteredAssets.IsEmpty, Converter={StaticResource BoolToVis}}" />
         </Grid>
     </DockPanel>
 </UserControl>

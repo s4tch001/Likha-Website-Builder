@@ -46,7 +46,7 @@ public static class ProjectValidator
         ValidateBreakpoints(project.Breakpoints);
         ValidateVariables(project.Variables);
         ValidateAssets(project.Assets);
-        ValidatePages(project.Pages);
+        ValidatePages(project.Pages, project.Assets.Select(asset => asset.RelativePath).ToHashSet(StringComparer.Ordinal));
     }
 
     private static void ValidateBreakpoints(IReadOnlyList<Breakpoint> breakpoints)
@@ -99,6 +99,11 @@ public static class ProjectValidator
 
     private static void ValidateAssets(IReadOnlyList<ProjectAsset> assets)
     {
+        var allowedKinds = new HashSet<string>(StringComparer.Ordinal)
+        {
+            AssetKinds.Image, AssetKinds.Svg, AssetKinds.Icon, AssetKinds.Video,
+            AssetKinds.Audio, AssetKinds.Font, AssetKinds.Document,
+        };
         var ids = new HashSet<string>(StringComparer.Ordinal);
         var storedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var asset in assets)
@@ -121,6 +126,8 @@ public static class ProjectValidator
 
             if (Path.GetFileName(asset.StoredFileName) != asset.StoredFileName
                 || asset.RelativePath != $"Assets/{asset.StoredFileName}"
+                || !allowedKinds.Contains(asset.Kind)
+                || !asset.MediaType.Contains('/')
                 || asset.SizeBytes < 0
                 || asset.Sha256.Length != 64
                 || !asset.Sha256.All(Uri.IsHexDigit))
@@ -130,7 +137,7 @@ public static class ProjectValidator
         }
     }
 
-    private static void ValidatePages(IReadOnlyList<Page> pages)
+    private static void ValidatePages(IReadOnlyList<Page> pages, IReadOnlySet<string> assetPaths)
     {
         var pageIds = new HashSet<string>(StringComparer.Ordinal);
         var routes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -168,7 +175,7 @@ public static class ProjectValidator
                     Fail("The element tree is null, too deep, or too large.");
                 }
 
-                ValidateNode(node, page.Id, elementIds);
+                ValidateNode(node, page.Id, elementIds, assetPaths);
                 for (var index = node.Children.Count - 1; index >= 0; index--)
                 {
                     stack.Push((node.Children[index], depth + 1));
@@ -177,7 +184,11 @@ public static class ProjectValidator
         }
     }
 
-    private static void ValidateNode(ElementNode node, string pageId, HashSet<string> ids)
+    private static void ValidateNode(
+        ElementNode node,
+        string pageId,
+        HashSet<string> ids,
+        IReadOnlySet<string> assetPaths)
     {
         RequireText(node.Id, 128, $"page[{pageId}].element.id");
         RequireText(node.Type, 128, $"element[{node.Id}].type");
@@ -212,6 +223,14 @@ public static class ProjectValidator
             if (!ProjectContentPolicy.IsSafeHtmlAttribute(name, value ?? string.Empty))
             {
                 Fail($"Element '{node.Id}' contains unsafe attribute '{name}'.");
+            }
+
+            if (name is "src" or "href" or "poster"
+                && value is not null
+                && value.StartsWith("Assets/", StringComparison.Ordinal)
+                && !assetPaths.Contains(value))
+            {
+                Fail($"Element '{node.Id}' refers to an unknown managed asset.");
             }
         }
 

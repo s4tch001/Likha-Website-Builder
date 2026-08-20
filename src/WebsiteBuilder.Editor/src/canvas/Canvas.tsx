@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { frameWidthFor } from "../model/types";
 import { DRAG_MIME } from "../palette/catalog";
+import { ASSET_DRAG_MIME, editorFontFaceCss } from "../model/assetElements";
 import {
   collectElementRects,
   getAbsolutePosition,
@@ -74,9 +75,11 @@ export default function Canvas() {
   const selectedIds = useEditorStore((s) => s.selectedIds);
   const breakpointId = useEditorStore((s) => s.breakpointId);
   const breakpoints = useEditorStore((s) => s.project?.breakpoints);
+  const project = useEditorStore((s) => s.project);
   const canvasBackground = useEditorStore((s) => s.canvasBackground);
   const setView = useEditorStore((s) => s.setView);
   const insertElement = useEditorStore((s) => s.insertElement);
+  const insertAsset = useEditorStore((s) => s.insertAsset);
 
   const clipRef = useRef<HTMLDivElement>(null);
   const { width, height } = useElementSize(clipRef);
@@ -535,7 +538,11 @@ export default function Canvas() {
   );
 
   const onDragOver = useCallback((e: React.DragEvent) => {
-    if (e.dataTransfer.types.includes(DRAG_MIME)) {
+    if (
+      e.dataTransfer.types.includes(DRAG_MIME) ||
+      e.dataTransfer.types.includes(ASSET_DRAG_MIME) ||
+      e.dataTransfer.types.includes("Files")
+    ) {
       e.preventDefault();
       e.dataTransfer.dropEffect = "copy";
     }
@@ -544,19 +551,31 @@ export default function Canvas() {
   const onDrop = useCallback(
     (e: React.DragEvent) => {
       const type = e.dataTransfer.getData(DRAG_MIME);
-      if (!type) {
+      const assetId = e.dataTransfer.getData(ASSET_DRAG_MIME);
+      const state = useEditorStore.getState();
+      const droppedName = e.dataTransfer.files.item(0)?.name;
+      const asset = state.project?.assets.find(
+        (candidate) =>
+          (assetId.length > 0 && candidate.id === assetId) ||
+          (droppedName !== undefined &&
+            candidate.storedFileName === droppedName),
+      );
+      if (!type && !asset) {
         return;
       }
       e.preventDefault();
 
       const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-      const state = useEditorStore.getState();
       const z = state.zoom / 100;
       const worldX = (e.clientX - rect.left - state.panX) / z;
       const worldY = (e.clientY - rect.top - state.panY) / z;
-      insertElement(type, Math.max(0, worldX), Math.max(0, worldY));
+      if (asset) {
+        insertAsset(asset, Math.max(0, worldX), Math.max(0, worldY));
+      } else {
+        insertElement(type, Math.max(0, worldX), Math.max(0, worldY));
+      }
     },
-    [insertElement],
+    [insertAsset, insertElement],
   );
 
   const z = zoom / 100;
@@ -566,6 +585,7 @@ export default function Canvas() {
 
   return (
     <div className="canvas-root" style={{ background: canvasBackground }}>
+      {project ? <style>{editorFontFaceCss(project)}</style> : null}
       <div
         className="canvas-corner"
         style={{ width: RULER_SIZE, height: RULER_SIZE }}

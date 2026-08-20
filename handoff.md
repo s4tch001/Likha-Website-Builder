@@ -192,7 +192,7 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
 
 ---
 
-## 5. ✅ DONE (Phases 1–12 + 13a + migrations M1–M3f; 0/0 build, 69 C# + 36 editor tests)
+## 5. ✅ DONE (Phases 1–13 + migrations M1–M3f; 0/0 build, 73 C# + 39 editor tests)
 
 - **Phase 1 — Scaffolding.** Solution, 5 src + 2 test projects, Project JSON model
   (ElementNode/Page/Project/Breakpoint), ProjectSerializer, and service interfaces.
@@ -248,6 +248,26 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
   UTF-8/JSON validation, active/external SVG rejection, randomized names, SHA-256 metadata,
   atomic writes, path containment, and managed deletion. The Assets panel now uses this Core
   boundary and marks imports/deletions as project mutations for autosave/bridge persistence.
+- **Phase 13b — asset browser (2026-08-20).** Replaced the list-only Assets panel with a
+  searchable, category-filtered thumbnail grid, bounded raster thumbnail decoding, selection
+  details (kind/media type/size/import time/path), and contextual Insert/Apply Font/Delete
+  actions. Missing managed files remain unavailable instead of being opened through raw paths.
+- **Phase 13c — canvas drag/drop and export assets (2026-08-20).** Assets can be dragged from
+  WPF into the WebView2 canvas (with a metadata-id contract plus managed-filename fallback) or
+  inserted from the details action. The editor accepts only metadata that exactly matches the
+  active project's canonical asset list and resolves previews through a project-scoped virtual
+  origin. Image/SVG/icon and video nodes render semantically. Static exports copy assets under
+  `Assets/`, rebase nested-page URLs, and Next.js exports copy them under `public/Assets/` with
+  root-relative URLs. Export validates its complete contained output plan before writing and
+  streams binary files through atomic same-directory temporary files.
+- **Phase 13d — font/audio/document workflows (2026-08-20).** Audio assets insert semantic
+  controlled players; documents insert downloadable links; managed fonts expose deterministic
+  family names, live `@font-face` preview declarations, and an Apply Font action for the canvas
+  selection. Both exporters emit target-correct font URLs. Referenced assets cannot be deleted,
+  and project validation rejects unknown kinds, malformed metadata, and dangling managed URLs.
+  CSP allows only the dedicated managed-asset origin for editor images/media/fonts. Focused
+  Core/editor/codegen tests cover canonical insertion, spoof rejection, font URLs, nested export
+  paths, usage tracking, and atomic binary replacement.
 - **Migration M3a — repository safety baseline (2026-08-20).** Initialized Git on `main`,
   normalized repository text to LF through `.gitattributes` + `.editorconfig`, expanded ignore
   rules for generated build/typecheck/coverage output, local agent settings, environment files,
@@ -292,13 +312,8 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
 
 ---
 
-## 6. ⛔ NOT DONE — Phase 13b onward
+## 6. ⛔ NOT DONE — Phase 14 onward
 
-Deliver each split into sub-phases, one per turn.
-
-- **Phase 13 — Asset manager (13a complete).** Remaining: 13b thumbnail/grid browser with
-  category/search filtering and asset details; 13c drag image/SVG/video assets into the canvas
-  and keep exported paths correct; 13d font/audio/document-specific workflows.
 - **Phase 14 — Component library.** Prebuilt blocks (Navbar, Hero, Pricing, Testimonials,
   FAQ, Forms, Footer, 404, landing pages…) insertable onto the canvas.
 - **Phase 15 — Undo/Redo integration.** `UndoRedoService` exists but NO mutations push
@@ -340,6 +355,8 @@ rule). Today's date context in prior sessions was 2026-06; convert relative date
 
 ## 8. Suggested first action in the new session
 
-Start **Phase 13b — asset thumbnail/grid browser** only after the user explicitly asks to
-continue. M3b–M3f are complete; preserve their revision, validation, persistence, coverage,
-and dependency gates while adding category/search filtering and asset details.
+Continue with **Phase 14a — component definition/catalog foundation**. The user explicitly
+asked Codex to continue through later phases/sub-phases and to update this handoff after every
+completed sub-phase, stopping work when remaining Codex usage reaches 10%. Preserve the Phase
+13 canonical-asset boundary plus the M3 revision, validation, persistence, coverage, and
+dependency gates.

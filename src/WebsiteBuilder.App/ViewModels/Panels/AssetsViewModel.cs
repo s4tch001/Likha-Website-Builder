@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
+using System.Windows.Data;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using WebsiteBuilder.App.Services;
@@ -14,12 +16,26 @@ public sealed record AssetItem(ProjectAsset Asset, string FullPath)
     public string Name => Asset.Name;
     public string Kind => Asset.Kind;
     public string RelativePath => Asset.RelativePath;
+    public string MediaType => Asset.MediaType;
+    public string Size => ProjectAssetPolicy.FormatSize(Asset.SizeBytes);
+    public string Imported => Asset.ImportedUtc.LocalDateTime.ToString("g");
+    public string Digest => Asset.Sha256;
+    public string Glyph => Kind switch
+    {
+        AssetKinds.Image or AssetKinds.Svg or AssetKinds.Icon => "▧",
+        AssetKinds.Video => "▶",
+        AssetKinds.Audio => "♫",
+        AssetKinds.Font => "Aa",
+        _ => "▤",
+    };
+    public bool CanPreview => Kind is AssetKinds.Image or AssetKinds.Icon
+        && Path.GetExtension(FullPath).ToLowerInvariant() is ".png" or ".jpg" or ".jpeg" or ".gif" or ".bmp" or ".ico";
+    public string ActionLabel => Kind == AssetKinds.Font ? "Apply font" : "Insert";
 }
 
 /// <summary>
-/// Displays managed project assets and delegates all import/delete filesystem
-/// operations to the validated Core asset service. Preview and canvas dragging
-/// are intentionally deferred to later Phase 13 sub-phases.
+/// Browses, filters and safely uses managed project assets. File operations remain
+/// behind the validated Core service; the UI only passes canonical metadata.
 /// </summary>
 public sealed partial class AssetsViewModel : ToolViewModel
 {
@@ -33,21 +49,44 @@ public sealed partial class AssetsViewModel : ToolViewModel
     private readonly IProjectService _projects;
     private readonly IFileDialogService _fileDialogs;
     private readonly IAssetService _assetService;
+    private readonly EditorSession _editor;
 
     public AssetsViewModel(
         IProjectService projects,
         IFileDialogService fileDialogs,
-        IAssetService assetService)
+        IAssetService assetService,
+        EditorSession editor)
         : base(PanelIds.Assets, "Assets")
     {
         _projects = projects;
         _fileDialogs = fileDialogs;
         _assetService = assetService;
+        _editor = editor;
+        FilteredAssets = CollectionViewSource.GetDefaultView(Assets);
+        FilteredAssets.Filter = FilterAsset;
         _projects.CurrentChanged += (_, _) => Refresh();
+        _projects.Mutated += (_, _) => Refresh();
         Refresh();
     }
 
     public ObservableCollection<AssetItem> Assets { get; } = new();
+
+    public ICollectionView FilteredAssets { get; }
+
+    public IReadOnlyList<string> Categories { get; } =
+        ["All", AssetKinds.Image, AssetKinds.Svg, AssetKinds.Icon, AssetKinds.Video,
+         AssetKinds.Audio, AssetKinds.Font, AssetKinds.Document];
+
+    [ObservableProperty]
+    private string _searchText = string.Empty;
+
+    [ObservableProperty]
+    private string _selectedCategory = "All";
+
+    [ObservableProperty]
+    private AssetItem? _selectedAsset;
+
+    public bool HasSelectedAsset => SelectedAsset is not null;
 
     public bool HasAssets => Assets.Count > 0;
 
@@ -89,6 +128,55 @@ public sealed partial class AssetsViewModel : ToolViewModel
         }
 
         OnPropertyChanged(nameof(HasAssets));
+        FilteredAssets.Refresh();
+    }
+
+    partial void OnSearchTextChanged(string value) => FilteredAssets.Refresh();
+
+    partial void OnSelectedCategoryChanged(string value) => FilteredAssets.Refresh();
+
+    partial void OnSelectedAssetChanged(AssetItem? value) => OnPropertyChanged(nameof(HasSelectedAsset));
+
+    private bool FilterAsset(object candidate)
+    {
+        if (candidate is not AssetItem item)
+        {
+            return false;
+        }
+
+        var categoryMatches = SelectedCategory == "All"
+            || string.Equals(item.Kind, SelectedCategory, StringComparison.Ordinal);
+        var searchMatches = string.IsNullOrWhiteSpace(SearchText)
+            || item.Name.Contains(SearchText.Trim(), StringComparison.OrdinalIgnoreCase)
+            || item.Kind.Contains(SearchText.Trim(), StringComparison.OrdinalIgnoreCase)
+            || item.MediaType.Contains(SearchText.Trim(), StringComparison.OrdinalIgnoreCase);
+        return categoryMatches && searchMatches;
+    }
+
+    /// <summary>Inserts media/document assets, or applies a managed font to the selection.</summary>
+    [RelayCommand]
+    private void Use(AssetItem? item)
+    {
+        if (item is null)
+        {
+            return;
+        }
+
+        if (item.Kind == AssetKinds.Font)
+        {
+            if (_editor.SelectedId is not { } selectedId)
+            {
+                Status = "Select an element before applying a font.";
+                return;
+            }
+
+            _editor.SetStyle(selectedId, "font-family", $"'{ProjectAssetPolicy.FontFamily(item.Asset)}'");
+            Status = $"Applied {item.Name} to the selected element.";
+            return;
+        }
+
+        _editor.InsertAsset(item.Asset);
+        Status = $"Inserted {item.Name}.";
     }
 
     /// <summary>Imports one or more files through the bounded Core pipeline.</summary>
@@ -142,6 +230,13 @@ public sealed partial class AssetsViewModel : ToolViewModel
             || _projects.ProjectDirectory is not { } directory
             || _projects.Current is not { } project)
         {
+            return;
+        }
+
+        var references = ProjectAssetPolicy.CountReferences(project, item.Asset);
+        if (references > 0)
+        {
+            Status = $"Cannot delete {item.Name}: used by {references} element reference(s).";
             return;
         }
 

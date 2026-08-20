@@ -113,6 +113,11 @@ const DEFAULTS: Record<string, ElementDefaults> = {
     height: 180,
     styles: { background: "#111", "border-radius": "6px" },
   },
+  Audio: {
+    width: 320,
+    height: 54,
+    styles: { background: "#111", "border-radius": "6px" },
+  },
   Icon: {
     width: 40,
     height: 40,

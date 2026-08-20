@@ -24,6 +24,7 @@ internal static class HtmlTags
         [ElementTypes.Link] = "a",
         [ElementTypes.Image] = "img",
         [ElementTypes.Video] = "video",
+        [ElementTypes.Audio] = "audio",
         [ElementTypes.Form] = "form",
         [ElementTypes.Input] = "input",
         [ElementTypes.Textarea] = "textarea",

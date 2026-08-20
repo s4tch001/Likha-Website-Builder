@@ -59,7 +59,7 @@ public sealed class ReactCodeGenerator : ICodeGenerator
             return Array.Empty<GeneratedFile>();
         }
 
-        var sheet = WebStyleSheet.Build(project);
+        var sheet = WebStyleSheet.Build(project, WebStyleSheet.AssetUrlMode.ReactPublic);
         var componentNames = BuildComponentNames(project.Pages);
         var routeDirectories = BuildRouteDirectories(project.Pages);
         var files = new List<GeneratedFile>
@@ -330,7 +330,7 @@ public sealed class ReactCodeGenerator : ICodeGenerator
     {
         var src = node.Attributes.TryGetValue("src", out var candidate)
             && IsSafeUrl("src", candidate)
-                ? candidate
+                ? NormalizeAssetUrl(candidate)
                 : TransparentImage;
         var alt = node.Attributes.TryGetValue("alt", out var altText)
             ? altText
@@ -363,7 +363,7 @@ public sealed class ReactCodeGenerator : ICodeGenerator
         {
             if (excluded?.Contains(rawName) == true
                 || !TryNormalizeAttribute(rawName, out var name)
-                || !TryFormatAttribute(name, value, out var formatted))
+                || !TryFormatAttribute(name, NormalizeAssetUrl(value), out var formatted))
             {
                 continue;
             }
@@ -373,6 +373,9 @@ public sealed class ReactCodeGenerator : ICodeGenerator
 
         return sb.ToString();
     }
+
+    private static string NormalizeAssetUrl(string value) =>
+        value.StartsWith("Assets/", StringComparison.Ordinal) ? "/" + value : value;
 
     private static bool TryNormalizeAttribute(string rawName, out string name)
     {

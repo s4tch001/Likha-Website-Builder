@@ -153,6 +153,15 @@ export function isValidProject(value: unknown): value is Project {
     return false;
   }
   const breakpointIds = new Set<string>();
+  const assetKinds = new Set([
+    "Image",
+    "SVG",
+    "Icon",
+    "Video",
+    "Audio",
+    "Font",
+    "Document",
+  ]);
   let baseBreakpoints = 0;
   for (const breakpoint of value.breakpoints) {
     if (
@@ -177,8 +186,18 @@ export function isValidProject(value: unknown): value is Project {
         typeof asset.id === "string" &&
         typeof asset.name === "string" &&
         typeof asset.storedFileName === "string" &&
+        !asset.storedFileName.includes("/") &&
+        !asset.storedFileName.includes("\\") &&
         typeof asset.relativePath === "string" &&
         asset.relativePath === `Assets/${asset.storedFileName}` &&
+        typeof asset.kind === "string" &&
+        assetKinds.has(asset.kind) &&
+        typeof asset.mediaType === "string" &&
+        asset.mediaType.includes("/") &&
+        typeof asset.sizeBytes === "number" &&
+        Number.isSafeInteger(asset.sizeBytes) &&
+        asset.sizeBytes >= 0 &&
+        typeof asset.importedUtc === "string" &&
         typeof asset.sha256 === "string" &&
         /^[a-fA-F0-9]{64}$/.test(asset.sha256),
     )
@@ -187,6 +206,11 @@ export function isValidProject(value: unknown): value is Project {
   }
 
   const pageIds = new Set<string>();
+  const assetPaths = new Set(
+    value.assets.map(
+      (asset) => (asset as { relativePath: string }).relativePath,
+    ),
+  );
   const routes = new Set<string>();
   const elementIds = new Set<string>();
   let count = 0;
@@ -227,6 +251,15 @@ export function isValidProject(value: unknown): value is Project {
         return false;
       }
       elementIds.add(current.node.id);
+      for (const [name, entry] of Object.entries(current.node.attributes)) {
+        if (
+          (name === "src" || name === "href" || name === "poster") &&
+          entry.startsWith("Assets/") &&
+          !assetPaths.has(entry)
+        ) {
+          return false;
+        }
+      }
       for (const child of current.node.children) {
         stack.push({ node: child, depth: current.depth + 1 });
       }

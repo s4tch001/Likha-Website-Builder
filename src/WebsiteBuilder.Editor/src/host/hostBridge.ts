@@ -195,6 +195,27 @@ export async function connectHost(): Promise<HostInfo | null> {
     }
   });
 
+  bridge.on("editor.insertAsset", (payload) => {
+    const asset = (payload as { asset?: unknown })?.asset;
+    if (!asset || typeof asset !== "object") {
+      return;
+    }
+    const candidate = asset as import("../model/types").ProjectAsset;
+    const state = useEditorStore.getState();
+    const canonical = state.project?.assets.find(
+      (item) =>
+        item.id === candidate.id &&
+        item.storedFileName === candidate.storedFileName &&
+        item.relativePath === candidate.relativePath &&
+        item.kind === candidate.kind &&
+        item.mediaType === candidate.mediaType,
+    );
+    if (canonical) {
+      const n = state.revision % 6;
+      state.insertAsset(canonical, 80 + n * 24, 80 + n * 24);
+    }
+  });
+
   // Headless verification: drive a move + reparent and report the outcome.
   bridge.on("editor.runSelfTest", () => {
     const s = useEditorStore.getState();

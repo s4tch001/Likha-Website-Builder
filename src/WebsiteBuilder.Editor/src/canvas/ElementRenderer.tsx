@@ -1,8 +1,11 @@
+/* eslint-disable @next/next/no-img-element -- the editor needs native media elements for arbitrary canvas geometry and its WebView2 asset origin */
 import { useContext, type CSSProperties } from "react";
 import type { ElementNode } from "../model/types";
 import { effectiveStyles } from "../model/responsive";
 import { CanvasRenderContext } from "./CanvasContext";
 import { geometryStyle, toReactStyle } from "./styleUtils";
+import { editorAssetUrl } from "../model/assetElements";
+import { useEditorStore } from "../store/editorStore";
 
 interface ElementRendererProps {
   node: ElementNode;
@@ -23,6 +26,7 @@ export default function ElementRenderer({
   frameMinHeight,
 }: ElementRendererProps) {
   const ctx = useContext(CanvasRenderContext);
+  const project = useEditorStore((state) => state.project);
 
   if (node.hidden) {
     return null;
@@ -62,14 +66,74 @@ export default function ElementRenderer({
     classes.push("dragging");
   }
 
+  const className = classes.join(" ");
+  const managedUrl = (attribute: "src" | "href") => {
+    const value = node.attributes[attribute];
+    if (!value) return undefined;
+    if (!value.startsWith("Assets/")) return value;
+    return project ? (editorAssetUrl(project, value) ?? undefined) : undefined;
+  };
+  const common = {
+    className,
+    "data-element-type": node.type,
+    "data-element-id": node.id,
+    "data-root": isRoot ? "true" : undefined,
+    style,
+  };
+
+  if (node.type === "Image") {
+    return (
+      <img
+        {...common}
+        src={managedUrl("src")}
+        alt={node.attributes.alt ?? node.name ?? ""}
+        draggable={false}
+      />
+    );
+  }
+  if (node.type === "Video") {
+    return (
+      <video
+        {...common}
+        src={managedUrl("src")}
+        controls
+        preload="metadata"
+        draggable={false}
+      />
+    );
+  }
+  if (node.type === "Audio") {
+    return (
+      <audio
+        {...common}
+        src={managedUrl("src")}
+        controls
+        preload="metadata"
+        draggable={false}
+      />
+    );
+  }
+  if (node.type === "Link") {
+    return (
+      <a
+        {...common}
+        href={managedUrl("href")}
+        download={node.attributes.download || undefined}
+        onClick={(event) => event.preventDefault()}
+        draggable={false}
+      >
+        {node.text ? (
+          <span className="wb-element-text">{node.text}</span>
+        ) : null}
+        {node.children.map((child) => (
+          <ElementRenderer key={child.id} node={child} />
+        ))}
+      </a>
+    );
+  }
+
   return (
-    <div
-      className={classes.join(" ")}
-      data-element-type={node.type}
-      data-element-id={node.id}
-      data-root={isRoot ? "true" : undefined}
-      style={style}
-    >
+    <div {...common}>
       {node.text ? <span className="wb-element-text">{node.text}</span> : null}
       {node.children.map((child) => (
         <ElementRenderer key={child.id} node={child} />

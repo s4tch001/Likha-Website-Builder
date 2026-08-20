@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import type { ElementNode, Project } from "../model/types";
+import type { ElementNode, Project, ProjectAsset } from "../model/types";
 import { findNode, useEditorStore } from "./editorStore";
+import {
+  assetFontFamily,
+  editorAssetUrl,
+  editorFontFaceCss,
+} from "../model/assetElements";
 
 function node(
   id: string,
@@ -68,6 +73,108 @@ describe("editorStore", () => {
     useEditorStore.getState().rotateElement("a", 200);
     expect(findNode(useEditorStore.getState().project!, "a")!.rotation).toBe(
       -160,
+    );
+  });
+
+  it("inserts canonical image, audio, and document assets with semantic attributes", () => {
+    const assets: ProjectAsset[] = [
+      {
+        id: "img",
+        name: "Photo",
+        storedFileName: "img.png",
+        relativePath: "Assets/img.png",
+        kind: "Image",
+        mediaType: "image/png",
+        sizeBytes: 1,
+        sha256: "a".repeat(64),
+        importedUtc: "2026-01-01T00:00:00Z",
+      },
+      {
+        id: "audio",
+        name: "Theme",
+        storedFileName: "theme.mp3",
+        relativePath: "Assets/theme.mp3",
+        kind: "Audio",
+        mediaType: "audio/mpeg",
+        sizeBytes: 1,
+        sha256: "b".repeat(64),
+        importedUtc: "2026-01-01T00:00:00Z",
+      },
+      {
+        id: "doc",
+        name: "Guide.pdf",
+        storedFileName: "guide.pdf",
+        relativePath: "Assets/guide.pdf",
+        kind: "Document",
+        mediaType: "application/pdf",
+        sizeBytes: 1,
+        sha256: "c".repeat(64),
+        importedUtc: "2026-01-01T00:00:00Z",
+      },
+    ];
+    const project = makeProject([]);
+    project.assets = assets;
+    useEditorStore.getState().setProject(project);
+
+    const store = useEditorStore.getState();
+    store.insertAsset(assets[0], 10, 20);
+    store.insertAsset(assets[1], 30, 40);
+    store.insertAsset(assets[2], 50, 60);
+    const children = useEditorStore.getState().project!.pages[0].root.children;
+    expect(children.map((child) => child.type)).toEqual([
+      "Image",
+      "Audio",
+      "Link",
+    ]);
+    expect(children[0].attributes.src).toBe("Assets/img.png");
+    expect(children[1].attributes.controls).toBe("true");
+    expect(children[2].attributes.download).toBe("Guide.pdf");
+  });
+
+  it("rejects asset metadata that does not exactly match the current project", () => {
+    const asset: ProjectAsset = {
+      id: "img",
+      name: "Photo",
+      storedFileName: "img.png",
+      relativePath: "Assets/img.png",
+      kind: "Image",
+      mediaType: "image/png",
+      sizeBytes: 1,
+      sha256: "a".repeat(64),
+      importedUtc: "2026-01-01T00:00:00Z",
+    };
+    const project = makeProject([]);
+    project.assets = [asset];
+    useEditorStore.getState().setProject(project);
+    useEditorStore
+      .getState()
+      .insertAsset({ ...asset, relativePath: "Assets/other.png" }, 0, 0);
+    expect(
+      useEditorStore.getState().project!.pages[0].root.children,
+    ).toHaveLength(0);
+  });
+
+  it("resolves only canonical preview URLs and emits project-scoped font faces", () => {
+    const font: ProjectAsset = {
+      id: "font-12!3",
+      name: "Brand",
+      storedFileName: "font file.woff2",
+      relativePath: "Assets/font file.woff2",
+      kind: "Font",
+      mediaType: "font/woff2",
+      sizeBytes: 1,
+      sha256: "d".repeat(64),
+      importedUtc: "2026-01-01T00:00:00Z",
+    };
+    const project = makeProject([]);
+    project.assets = [font];
+    expect(editorAssetUrl(project, font.relativePath)).toBe(
+      "https://project-assets.local/font%20file.woff2",
+    );
+    expect(editorAssetUrl(project, "Assets/../secret")).toBeNull();
+    expect(assetFontFamily(font)).toBe("LikhaAsset_font123");
+    expect(editorFontFaceCss(project)).toContain(
+      "font-family:'LikhaAsset_font123'",
     );
   });
 

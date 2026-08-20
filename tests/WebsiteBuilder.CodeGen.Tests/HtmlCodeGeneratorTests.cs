@@ -201,6 +201,50 @@ public class HtmlCodeGeneratorTests
     }
 
     [Fact]
+    public void Generate_NestedRoute_RebasesManagedMediaAndEmitsFontFace()
+    {
+        var project = Project.CreateDefault("Assets");
+        project.Pages[0].Route = "company/about";
+        project.Assets.Add(Asset("font", "site.woff2", AssetKinds.Font, "font/woff2"));
+        project.Assets.Add(Asset("sound", "sound.mp3", AssetKinds.Audio, "audio/mpeg"));
+        project.Assets.Add(Asset("guide", "guide.pdf", AssetKinds.Document, "application/pdf"));
+        project.Pages[0].Root.Children.Add(new ElementNode
+        {
+            Id = "sound",
+            Type = ElementTypes.Audio,
+            Attributes = { ["src"] = "Assets/sound.mp3", ["controls"] = "true" },
+        });
+        project.Pages[0].Root.Children.Add(new ElementNode
+        {
+            Id = "guide",
+            Type = ElementTypes.Link,
+            Text = "Guide",
+            Attributes = { ["href"] = "Assets/guide.pdf", ["download"] = "Guide.pdf" },
+        });
+
+        var files = new HtmlCodeGenerator().Generate(project);
+        var html = files.Single(file => file.RelativePath == "company/about.html").Contents;
+        var css = files.Single(file => file.RelativePath == "css/styles.css").Contents;
+        Assert.Contains("<audio", html);
+        Assert.Contains("src=\"../Assets/sound.mp3\"", html);
+        Assert.Contains("href=\"../Assets/guide.pdf\"", html);
+        Assert.Contains("@font-face", css);
+        Assert.Contains("url('../Assets/site.woff2')", css);
+    }
+
+    private static ProjectAsset Asset(string id, string fileName, string kind, string mediaType) => new()
+    {
+        Id = id,
+        Name = fileName,
+        StoredFileName = fileName,
+        RelativePath = $"Assets/{fileName}",
+        Kind = kind,
+        MediaType = mediaType,
+        SizeBytes = 1,
+        Sha256 = new string('a', 64),
+    };
+
+    [Fact]
     public void Generate_RejectsEventHandlerAttribute()
     {
         var project = Project.CreateDefault("Unsafe");

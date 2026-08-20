@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { createElement } from "../model/elementFactory";
 import type { BreakpointDef, ElementNode, Page, Project } from "../model/types";
+import { createAssetElement } from "../model/assetElements";
+import type { ProjectAsset } from "../model/types";
 import {
   isSafeCssPropertyName,
   isSafeCssValue,
@@ -235,6 +237,8 @@ interface EditorState {
   addElement: (node: ElementNode, parentId?: string) => void;
   /** Creates an element of the given type and adds it under the active page root. */
   insertElement: (type: string, x: number, y: number) => void;
+  /** Inserts an element only when the asset matches current canonical metadata. */
+  insertAsset: (asset: ProjectAsset, x: number, y: number) => void;
 
   /** Replaces the selection with a single element (or clears it with null). */
   selectElement: (id: string | null) => void;
@@ -412,6 +416,36 @@ export const useEditorStore = create<EditorState>((set) => ({
       }
       parent.children.push(createElement(type, x, y));
       return { project, revision: state.revision + 1 };
+    }),
+
+  insertAsset: (asset, x, y) =>
+    set((state) => {
+      if (!state.project) {
+        return {};
+      }
+      const canonical = state.project.assets.find(
+        (candidate) =>
+          candidate.id === asset.id &&
+          candidate.storedFileName === asset.storedFileName &&
+          candidate.relativePath === asset.relativePath &&
+          candidate.kind === asset.kind &&
+          candidate.mediaType === asset.mediaType,
+      );
+      const targetId = activeRootId(state);
+      if (!canonical || !targetId) {
+        return {};
+      }
+      const node = createAssetElement(canonical, x, y);
+      if (!node) {
+        return {};
+      }
+      const project = structuredClone(state.project) as Project;
+      const parent = findNode(project, targetId);
+      if (!parent) {
+        return {};
+      }
+      parent.children.push(node);
+      return { project, revision: state.revision + 1, selectedIds: [node.id] };
     }),
 
   selectElement: (id) => set({ selectedIds: id ? [id] : [] }),

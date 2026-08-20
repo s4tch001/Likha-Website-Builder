@@ -25,6 +25,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly IFileDialogService _fileDialogs;
     private readonly EditorSession _editor;
     private readonly AutoSaveService _autoSave;
+    private readonly IAssetService _assetService;
 
     private IShellLayout? _shellLayout;
     private IRelayCommand? _undoCommand;
@@ -43,6 +44,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         IFileDialogService fileDialogs,
         EditorSession editor,
         AutoSaveService autoSave,
+        IAssetService assetService,
         CommandPaletteViewModel commandPalette,
         CanvasViewModel canvas,
         ProjectExplorerViewModel projectExplorer,
@@ -58,6 +60,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _fileDialogs = fileDialogs;
         _editor = editor;
         _autoSave = autoSave;
+        _assetService = assetService;
 
         CommandPalette = commandPalette;
         Canvas = canvas;
@@ -326,6 +329,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         {
             var files = generator.Generate(_projects.Current);
             var targets = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var generatedTargets = new List<(GeneratedFile File, string FullPath)>();
             foreach (var file in files)
             {
                 var fullPath = ExportPathPolicy.ResolveContainedPath(folder, file.RelativePath);
@@ -333,15 +337,58 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 {
                     throw new InvalidDataException($"The generator produced duplicate output '{file.RelativePath}'.");
                 }
+                generatedTargets.Add((file, fullPath));
+            }
 
-                Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+            var assetCopies = new List<(string SourcePath, string OutputPath)>();
+            if (_projects.ProjectDirectory is not { } projectDirectory)
+            {
+                if (_projects.Current.Assets.Count > 0)
+                {
+                    throw new InvalidOperationException("Save the project before exporting managed assets.");
+                }
+            }
+            else
+            {
+                var assetRoot = generator.Target == CodeGenTarget.React ? "public/Assets" : "Assets";
+                foreach (var asset in _projects.Current.Assets)
+                {
+                    if (!_assetService.TryGetFullPath(projectDirectory, asset, out var sourcePath)
+                        || !File.Exists(sourcePath))
+                    {
+                        throw new FileNotFoundException($"Managed asset '{asset.Name}' is unavailable.");
+                    }
+
+                    var outputPath = ExportPathPolicy.ResolveContainedPath(
+                        folder,
+                        $"{assetRoot}/{asset.StoredFileName}");
+                    if (!targets.Add(outputPath))
+                    {
+                        throw new InvalidDataException($"Duplicate asset output '{asset.StoredFileName}'.");
+                    }
+
+                    assetCopies.Add((sourcePath, outputPath));
+                }
+            }
+
+            // Resolve and validate the complete export plan before touching the destination.
+            foreach (var (file, fullPath) in generatedTargets)
+            {
                 await AtomicFileWriter.WriteAllTextAsync(
                     fullPath,
                     file.Contents,
                     createBackup: false).ConfigureAwait(true);
             }
 
-            StatusMessage = $"Exported {files.Count} files to {folder}";
+            foreach (var (sourcePath, outputPath) in assetCopies)
+            {
+                await AtomicFileWriter.CopyFileAsync(
+                    sourcePath,
+                    outputPath,
+                    createBackup: false).ConfigureAwait(true);
+            }
+
+            StatusMessage = $"Exported {files.Count} generated files and {_projects.Current.Assets.Count} assets to {folder}";
         }
         catch (Exception ex)
         {

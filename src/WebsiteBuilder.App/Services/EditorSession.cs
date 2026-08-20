@@ -24,16 +24,22 @@ public sealed class EditorSession
     /// <summary>Virtual host the local editor bundle is served from.</summary>
     public const string VirtualHost = "editor.local";
 
+    /// <summary>Read-only virtual origin mapped only to the active project's managed Assets folder.</summary>
+    public const string AssetVirtualHost = "project-assets.local";
+
     private readonly bool _useDevServer;
     private readonly string _devServerUrl;
     private readonly IProjectService _projects;
 
     private WebView2EditorBridge? _bridge;
+    private CoreWebView2? _core;
     private bool _attached;
 
     public EditorSession(IConfiguration configuration, IProjectService projects)
     {
         _projects = projects;
+        _projects.CurrentChanged += (_, _) => RefreshAssetMapping();
+        _projects.HostMutated += (_, _) => RefreshAssetMapping();
 
         _useDevServer =
             Environment.GetEnvironmentVariable("WB_EDITOR_DEVSERVER") == "1"
@@ -117,6 +123,7 @@ public sealed class EditorSession
             await webView.EnsureCoreWebView2Async(environment).ConfigureAwait(true);
 
             var core = webView.CoreWebView2;
+            _core = core;
             core.Settings.AreDevToolsEnabled = _useDevServer;
             core.Settings.IsStatusBarEnabled = false;
             core.Settings.AreDefaultContextMenusEnabled = _useDevServer;
@@ -148,6 +155,9 @@ public sealed class EditorSession
                     VirtualHost, wwwroot, CoreWebView2HostResourceAccessKind.Allow);
                 url = $"https://{VirtualHost}/index.html";
             }
+
+
+            RefreshAssetMapping();
 
             var allowedOrigin = new Uri(url).GetLeftPart(UriPartial.Authority);
             _bridge = new WebView2EditorBridge(
@@ -507,6 +517,57 @@ public sealed class EditorSession
     /// <summary>Asks the editor to insert a new element of the given type onto the canvas.</summary>
     public void InsertElement(string elementType)
         => _ = _bridge?.PublishAsync("editor.insertElement", new { type = elementType });
+
+    /// <summary>Requests insertion using only canonical asset metadata from the current project.</summary>
+    public void InsertAsset(ProjectAsset asset)
+    {
+        ArgumentNullException.ThrowIfNull(asset);
+        if (_projects.Current?.Assets.Any(candidate =>
+                string.Equals(candidate.Id, asset.Id, StringComparison.Ordinal)
+                && string.Equals(candidate.RelativePath, asset.RelativePath, StringComparison.Ordinal)) != true)
+        {
+            SetStatus("Asset insertion rejected: metadata is not part of the current project.");
+            return;
+        }
+
+        _ = _bridge?.PublishAsync("editor.insertAsset", new { asset });
+    }
+
+    private void RefreshAssetMapping()
+    {
+        if (_core is null)
+        {
+            return;
+        }
+
+        try
+        {
+            _core.ClearVirtualHostNameToFolderMapping(AssetVirtualHost);
+            if (_projects.ProjectDirectory is not { } directory)
+            {
+                return;
+            }
+
+            var root = Path.GetFullPath(directory).TrimEnd(Path.DirectorySeparatorChar);
+            var assets = Path.GetFullPath(Path.Combine(root, AssetService.AssetsFolderName));
+            var prefix = root + Path.DirectorySeparatorChar;
+            if (!assets.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+                || !Directory.Exists(assets)
+                || (File.GetAttributes(assets) & FileAttributes.ReparsePoint) != 0)
+            {
+                return;
+            }
+
+            _core.SetVirtualHostNameToFolderMapping(
+                AssetVirtualHost,
+                assets,
+                CoreWebView2HostResourceAccessKind.Allow);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            SetStatus("Managed asset preview mapping is unavailable.");
+        }
+    }
 
     private void SetStatus(string status)
     {

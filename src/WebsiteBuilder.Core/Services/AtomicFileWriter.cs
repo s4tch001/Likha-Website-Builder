@@ -71,6 +71,72 @@ public static class AtomicFileWriter
         }
     }
 
+    /// <summary>Streams a file through a same-directory temporary path, then atomically publishes it.</summary>
+    public static async Task CopyFileAsync(
+        string sourcePath,
+        string destinationPath,
+        bool createBackup = false,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourcePath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(destinationPath);
+
+        var sourceFullPath = Path.GetFullPath(sourcePath);
+        var destinationFullPath = Path.GetFullPath(destinationPath);
+        if (string.Equals(sourceFullPath, destinationFullPath, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        var directory = Path.GetDirectoryName(destinationFullPath)
+            ?? throw new InvalidOperationException("The destination must have a parent directory.");
+        Directory.CreateDirectory(directory);
+        var temporaryPath = Path.Combine(directory, $".{Path.GetFileName(destinationFullPath)}.{Guid.NewGuid():N}.tmp");
+
+        try
+        {
+            await using (var input = new FileStream(
+                sourceFullPath, FileMode.Open, FileAccess.Read, FileShare.Read,
+                64 * 1024, FileOptions.Asynchronous | FileOptions.SequentialScan))
+            await using (var output = new FileStream(
+                temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None,
+                64 * 1024, FileOptions.Asynchronous | FileOptions.WriteThrough))
+            {
+                await input.CopyToAsync(output, 64 * 1024, cancellationToken).ConfigureAwait(false);
+                await output.FlushAsync(cancellationToken).ConfigureAwait(false);
+                output.Flush(flushToDisk: true);
+            }
+
+            if (!File.Exists(destinationFullPath))
+            {
+                File.Move(temporaryPath, destinationFullPath);
+            }
+            else
+            {
+                var backupPath = createBackup ? destinationFullPath + ".bak" : null;
+                try
+                {
+                    File.Replace(temporaryPath, destinationFullPath, backupPath, ignoreMetadataErrors: true);
+                }
+                catch (PlatformNotSupportedException)
+                {
+                    ReplaceWithMove(temporaryPath, destinationFullPath, backupPath);
+                }
+                catch (IOException) when (File.Exists(temporaryPath))
+                {
+                    ReplaceWithMove(temporaryPath, destinationFullPath, backupPath);
+                }
+            }
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+            {
+                File.Delete(temporaryPath);
+            }
+        }
+    }
+
     private static void ReplaceWithMove(string temporaryPath, string fullPath, string? backupPath)
     {
         if (backupPath is not null)

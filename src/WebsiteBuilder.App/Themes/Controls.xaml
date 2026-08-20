@@ -7,6 +7,7 @@
     <conv:InverseBoolToVisibilityConverter x:Key="InverseBoolToVis" />
     <conv:ZeroToVisibilityConverter x:Key="ZeroToVis" />
     <conv:StringToBrushConverter x:Key="StringToBrush" />
+    <conv:AssetThumbnailConverter x:Key="AssetThumbnail" />
 
     <!-- ===================== Text styles ===================== -->
     <Style x:Key="PanelHeaderText" TargetType="TextBlock">
