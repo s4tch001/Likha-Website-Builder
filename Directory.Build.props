@@ -1,0 +1,25 @@
+<Project>
+
+  <!--
+    Solution-wide MSBuild defaults inherited by every C# project.
+    Per-project differences (e.g. the WPF app targets net8.0-windows with UseWPF)
+    are set in the individual .csproj files and override what is declared here.
+  -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <Deterministic>true</Deterministic>
+
+    <!-- Shared product metadata -->
+    <Product>Likha - Website Builder</Product>
+    <Company>Likha</Company>
+    <Authors>Likha</Authors>
+    <Version>0.1.0</Version>
+  </PropertyGroup>
+
+</Project>

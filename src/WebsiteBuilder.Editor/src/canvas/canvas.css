@@ -1,0 +1,239 @@
+.canvas-root {
+  position: absolute;
+  inset: 0;
+  background: #141417;
+  overflow: hidden;
+}
+
+/* Top-left corner where the two rulers meet */
+.canvas-corner {
+  position: absolute;
+  left: 0;
+  top: 0;
+  background: #1e1e22;
+  border-right: 1px solid #2c2c34;
+  border-bottom: 1px solid #2c2c34;
+  z-index: 3;
+}
+
+.canvas-ruler-h {
+  position: absolute;
+  top: 0;
+  right: 0;
+  overflow: hidden;
+  background: #1e1e22;
+  border-bottom: 1px solid #2c2c34;
+  z-index: 2;
+}
+
+.canvas-ruler-v {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  overflow: hidden;
+  background: #1e1e22;
+  border-right: 1px solid #2c2c34;
+  z-index: 2;
+}
+
+.ruler {
+  position: absolute;
+  inset: 0;
+  font-size: 9px;
+  color: #6f6f7a;
+}
+
+.ruler-tick {
+  position: absolute;
+}
+
+.ruler-horizontal .ruler-tick {
+  top: 0;
+  height: 100%;
+  border-left: 1px solid #34343c;
+}
+
+.ruler-horizontal .ruler-label {
+  position: absolute;
+  left: 3px;
+  top: 2px;
+  white-space: nowrap;
+}
+
+.ruler-vertical .ruler-tick {
+  left: 0;
+  width: 100%;
+  border-top: 1px solid #34343c;
+}
+
+.ruler-vertical .ruler-label {
+  position: absolute;
+  left: 3px;
+  top: 1px;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+.canvas-clip {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+}
+
+.canvas-clip.panning {
+  cursor: grab;
+}
+
+.canvas-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+}
+
+.canvas-viewport {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+}
+
+.device-frame {
+  position: relative;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.canvas-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6f6f7a;
+  font-size: 14px;
+}
+
+/* Rendered elements */
+.wb-element {
+  box-sizing: border-box;
+  cursor: move;
+  user-select: none;
+}
+
+.wb-element[data-root="true"] {
+  cursor: default;
+}
+
+.wb-element.selected {
+  outline: 2px solid #3b82f6;
+  outline-offset: 0;
+}
+
+.wb-element.drop-target {
+  outline: 2px dashed #22c55e;
+  outline-offset: 2px;
+}
+
+.wb-element.dragging {
+  opacity: 0.85;
+  z-index: 1000;
+  cursor: grabbing;
+}
+
+.wb-element-text {
+  display: inline;
+  pointer-events: none;
+}
+
+/* Selection bounding box + resize handles (screen space, constant size) */
+.selection-overlay {
+  position: absolute;
+  pointer-events: none;
+  z-index: 50;
+}
+
+.selection-box {
+  position: absolute;
+  inset: 0;
+  border: 1px solid #3b82f6;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25);
+}
+
+/* Locked elements: a dashed amber outline and no handles signal "not editable". */
+.selection-overlay.locked .selection-box {
+  border: 1px dashed #e6b450;
+  box-shadow: 0 0 0 1px rgba(230, 180, 80, 0.2);
+}
+
+.selection-handle {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  margin: -5px 0 0 -5px;
+  background: #ffffff;
+  border: 1px solid #3b82f6;
+  border-radius: 2px;
+  pointer-events: auto;
+}
+
+/* Rotation handle above the top edge */
+.rotate-handle {
+  position: absolute;
+  left: 50%;
+  top: -22px;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  background: #ffffff;
+  border: 1px solid #3b82f6;
+  border-radius: 50%;
+  cursor: grab;
+  pointer-events: auto;
+}
+
+.rotate-handle::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 12px;
+  width: 1px;
+  height: 10px;
+  background: #3b82f6;
+}
+
+.rotate-handle:active {
+  cursor: grabbing;
+}
+
+/* Marquee (rubber-band) selection rectangle */
+.marquee {
+  position: absolute;
+  z-index: 60;
+  pointer-events: none;
+  border: 1px solid #3b82f6;
+  background: rgba(59, 130, 246, 0.12);
+}
+
+/* Smart-guide alignment lines */
+.snap-guide {
+  position: absolute;
+  z-index: 70;
+  pointer-events: none;
+  background: #f0457e;
+}
+
+.snap-guide-v {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+
+.snap-guide-h {
+  left: 0;
+  right: 0;
+  height: 1px;
+}

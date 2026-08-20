@@ -1,0 +1,37 @@
+<UserControl x:Class="WebsiteBuilder.App.Views.Panels.FileManagerView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:WebsiteBuilder.App.ViewModels.Panels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:FileManagerViewModel}"
+             Background="{StaticResource App.Surface}">
+    <DockPanel>
+        <TextBlock DockPanel.Dock="Top" Style="{StaticResource PanelHeaderText}"
+                   Text="{Binding RootLabel}" TextTrimming="CharacterEllipsis" />
+        <Grid>
+            <TreeView ItemsSource="{Binding Entries}"
+                      Background="Transparent" BorderThickness="0"
+                      Foreground="{StaticResource App.Foreground}">
+                <TreeView.ItemContainerStyle>
+                    <Style TargetType="TreeViewItem">
+                        <Setter Property="Foreground" Value="{StaticResource App.Foreground}" />
+                    </Style>
+                </TreeView.ItemContainerStyle>
+                <TreeView.ItemTemplate>
+                    <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                        <StackPanel Orientation="Horizontal" Margin="2,1">
+                            <TextBlock Text="{Binding Name}" Foreground="{StaticResource App.Foreground}" />
+                        </StackPanel>
+                    </HierarchicalDataTemplate>
+                </TreeView.ItemTemplate>
+            </TreeView>
+            <TextBlock Style="{StaticResource MutedText}"
+                       Text="Save the project to browse its files."
+                       TextWrapping="Wrap" TextAlignment="Center" Margin="16"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                       Visibility="{Binding Entries.Count, Converter={StaticResource ZeroToVis}}" />
+        </Grid>
+    </DockPanel>
+</UserControl>

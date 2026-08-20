@@ -1,0 +1,11 @@
+<UserControl x:Class="WebsiteBuilder.App.Views.EditorHostControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             Loaded="OnLoaded">
+    <!-- The WebView2 surface that hosts the React editor bundle. -->
+    <wv2:WebView2 x:Name="WebView" DefaultBackgroundColor="#141417" />
+</UserControl>

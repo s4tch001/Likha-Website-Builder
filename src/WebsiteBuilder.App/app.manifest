@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
+  <assemblyIdentity version="0.1.0.0" name="WebsiteBuilder.App" />
+
+  <!--
+    DPI awareness is left to the WPF runtime (PerMonitorV2 by default on .NET).
+    A manifest dpiAwareness entry conflicts with WinForms (enabled for the colour
+    dialog), so it is intentionally omitted here.
+  -->
+
+  <!-- Declare compatibility with Windows 10/11. -->
+  <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
+    <application>
+      <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}" />
+    </application>
+  </compatibility>
+</assembly>

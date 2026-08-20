@@ -1,0 +1,29 @@
+# Normalize text in the repository so Windows and Node/.NET tooling produce
+# stable diffs regardless of the contributor's local Git configuration.
+* text=auto eol=lf
+
+# Windows-native command files require CRLF when executed by cmd.exe.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Keep shell scripts portable.
+*.sh text eol=lf
+
+# Binary assets must never be line-ending normalized.
+*.ico binary
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.gif binary
+*.webp binary
+*.avif binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.mp3 binary
+*.wav binary
+*.mp4 binary
+*.webm binary
+*.pdf binary
+*.zip binary

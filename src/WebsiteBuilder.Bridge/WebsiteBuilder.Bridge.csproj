@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The shared contract between the WPF host and the React editor. Defines the
+    JSON-RPC envelope and the IEditorBridge abstraction. The concrete WebView2
+    transport is implemented in the App in Phase 3; keeping the contract here
+    lets Core/CodeGen and tests reference it without a WebView2 dependency.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WebsiteBuilder.Core\WebsiteBuilder.Core.csproj" />
+  </ItemGroup>
+
+</Project>

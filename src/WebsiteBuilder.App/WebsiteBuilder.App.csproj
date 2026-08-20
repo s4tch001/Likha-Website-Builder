@@ -1,0 +1,70 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The WPF desktop shell (Windows-only). Hosts the dockable panels, the ribbon
+    and the WebView2-hosted React editor. Bootstraps a Microsoft.Extensions
+    generic host for DI/configuration/logging.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <!-- For the native colour picker dialog used by the Property Inspector. -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\likha.ico</ApplicationIcon>
+    <RootNamespace>WebsiteBuilder.App</RootNamespace>
+    <AssemblyName>WebsiteBuilder</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- App logo (window + taskbar icon). -->
+    <Resource Include="Assets\likha.ico" />
+    <Resource Include="Assets\likha.png" />
+  </ItemGroup>
+
+  <!--
+    WinForms is enabled only for the colour-picker dialog. Drop its implicit
+    global usings so WinForms types (Application, UserControl, KeyEventArgs,
+    Color) don't collide with their WPF equivalents; the dialog code is fully
+    qualified.
+  -->
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
+    <PackageReference Include="Dirkster.AvalonDock" Version="4.72.0" />
+    <PackageReference Include="Dirkster.AvalonDock.Themes.VS2013" Version="4.72.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2792.45" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WebsiteBuilder.Core\WebsiteBuilder.Core.csproj" />
+    <ProjectReference Include="..\WebsiteBuilder.Bridge\WebsiteBuilder.Bridge.csproj" />
+    <ProjectReference Include="..\WebsiteBuilder.CodeGen\WebsiteBuilder.CodeGen.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <!--
+    Ship the built React editor bundle (produced by `npm run build` in
+    src/WebsiteBuilder.Editor, output to wwwroot) alongside the executable so the
+    WebView2 host can serve it from a local virtual host. Guarded so the project
+    still builds before the editor has been built.
+  -->
+  <ItemGroup Condition="Exists('wwwroot')">
+    <Content Include="wwwroot\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>wwwroot\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
+  </ItemGroup>
+
+</Project>

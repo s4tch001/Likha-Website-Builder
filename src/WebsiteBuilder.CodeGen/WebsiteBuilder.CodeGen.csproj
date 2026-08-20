@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Pure code generation: turns the Project JSON model into HTML5/CSS3/JS and
+    React source trees. No UI or WebView dependencies so generators stay fully
+    unit-testable. Concrete emitters arrive in Phases 11-12.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WebsiteBuilder.Core\WebsiteBuilder.Core.csproj" />
+  </ItemGroup>
+
+</Project>

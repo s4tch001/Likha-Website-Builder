@@ -1,0 +1,157 @@
+<UserControl x:Class="WebsiteBuilder.App.Views.Panels.LayersView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:WebsiteBuilder.App.ViewModels.Panels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:LayersViewModel}"
+             Background="{StaticResource App.Surface}">
+    <UserControl.Resources>
+        <!-- Borderless icon toggle used for the hide / lock affordances on each row. -->
+        <Style x:Key="LayerIconButton" TargetType="Button">
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Width" Value="20" />
+            <Setter Property="Height" Value="18" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <!-- Light enough to stay visible on the blue selection highlight. -->
+            <Setter Property="Foreground" Value="#BFBFC7" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="3">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#33FFFFFF" />
+                                <Setter Property="Foreground" Value="{StaticResource App.Foreground}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <DockPanel>
+        <TextBlock DockPanel.Dock="Top" Style="{StaticResource PanelHeaderText}" Text="LAYERS" />
+        <TreeView x:Name="LayersTree" ItemsSource="{Binding Roots}"
+                  Background="Transparent"
+                  BorderThickness="0"
+                  AllowDrop="True"
+                  Foreground="{StaticResource App.Foreground}"
+                  PreviewMouseLeftButtonDown="OnTreePreviewMouseLeftButtonDown"
+                  PreviewMouseMove="OnTreePreviewMouseMove"
+                  DragOver="OnTreeDragOver"
+                  DragLeave="OnTreeDragLeave"
+                  Drop="OnTreeDrop">
+            <TreeView.ItemContainerStyle>
+                <Style TargetType="TreeViewItem">
+                    <Setter Property="Foreground" Value="{StaticResource App.Foreground}" />
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                    <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                    <Setter Property="ContextMenu">
+                        <Setter.Value>
+                            <ContextMenu>
+                                <MenuItem Header="Rename" Command="{Binding BeginRenameCommand}" />
+                                <MenuItem Header="Group selection" Command="{Binding GroupCommand}" />
+                                <MenuItem Header="Ungroup" Command="{Binding UngroupCommand}"
+                                          IsEnabled="{Binding HasChildren}" />
+                                <Separator />
+                                <MenuItem Header="Delete" Command="{Binding DeleteCommand}" />
+                            </ContextMenu>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </TreeView.ItemContainerStyle>
+            <TreeView.ItemTemplate>
+                <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                    <Grid x:Name="Row" Margin="2,1">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Column="0" Text="&#xE8A5;" FontFamily="Segoe MDL2 Assets"
+                                   FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"
+                                   Foreground="{StaticResource App.ForegroundMuted}" />
+
+                        <Grid Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding DisplayName}"
+                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                       Foreground="{StaticResource App.Foreground}"
+                                       Visibility="{Binding IsEditing, Converter={StaticResource InverseBoolToVis}}">
+                                <TextBlock.InputBindings>
+                                    <MouseBinding MouseAction="LeftDoubleClick" Command="{Binding BeginRenameCommand}" />
+                                </TextBlock.InputBindings>
+                            </TextBlock>
+                            <TextBox Text="{Binding EditText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     Visibility="{Binding IsEditing, Converter={StaticResource BoolToVis}}"
+                                     FontSize="12" Padding="2,0" Margin="0,-1"
+                                     IsVisibleChanged="OnRenameBoxVisibleChanged"
+                                     KeyDown="OnRenameBoxKeyDown"
+                                     LostFocus="OnRenameBoxLostFocus" />
+                        </Grid>
+
+                        <!-- Lock toggle: open padlock (unlocked) → closed amber padlock (locked). -->
+                        <Button Grid.Column="2"
+                                Command="{Binding DataContext.ToggleLockedCommand, RelativeSource={RelativeSource AncestorType=TreeView}}"
+                                CommandParameter="{Binding}"
+                                Content="&#xE785;" ToolTip="Lock / unlock">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource LayerIconButton}">
+                                    <Style.Triggers>
+                                        <!-- Selected row (blue): keep the icon bright. -->
+                                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                            <Setter Property="Foreground" Value="#FFFFFF" />
+                                        </DataTrigger>
+                                        <!-- Locked: closed padlock in amber, visible on dark or blue. -->
+                                        <DataTrigger Binding="{Binding IsLocked}" Value="True">
+                                            <Setter Property="Content" Value="&#xE72E;" />
+                                            <Setter Property="Foreground" Value="#E6B450" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+
+                        <!-- Visibility toggle: open eye (visible) → eye-off glyph (hidden). -->
+                        <Button Grid.Column="3"
+                                Command="{Binding DataContext.ToggleHiddenCommand, RelativeSource={RelativeSource AncestorType=TreeView}}"
+                                CommandParameter="{Binding}"
+                                Content="&#xE7B3;" ToolTip="Show / hide">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource LayerIconButton}">
+                                    <Style.Triggers>
+                                        <!-- Selected row (blue): keep the icon bright. -->
+                                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                            <Setter Property="Foreground" Value="#FFFFFF" />
+                                        </DataTrigger>
+                                        <!-- Hidden: eye-off glyph, dimmed to read as "off". -->
+                                        <DataTrigger Binding="{Binding IsHidden}" Value="True">
+                                            <Setter Property="Content" Value="&#xED1A;" />
+                                            <Setter Property="Foreground" Value="#8C8C94" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                    </Grid>
+                    <HierarchicalDataTemplate.Triggers>
+                        <DataTrigger Binding="{Binding IsHidden}" Value="True">
+                            <Setter TargetName="Row" Property="Opacity" Value="0.45" />
+                        </DataTrigger>
+                    </HierarchicalDataTemplate.Triggers>
+                </HierarchicalDataTemplate>
+            </TreeView.ItemTemplate>
+        </TreeView>
+    </DockPanel>
+</UserControl>

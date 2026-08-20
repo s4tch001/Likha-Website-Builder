@@ -1,0 +1,49 @@
+# ---------- .NET / Visual Studio ----------
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.cache
+artifacts/
+[Dd]ebug/
+[Rr]elease/
+TestResults/
+*.binlog
+*.trx
+
+# ---------- Rider / VS Code ----------
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.claude/settings.local.json
+
+# ---------- Node / Next.js (React editor) ----------
+node_modules/
+.next/
+out/
+coverage/
+.nyc_output/
+*.tsbuildinfo
+*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---------- Local configuration / secrets ----------
+.env
+.env.*
+!.env.example
+*.tmp
+*.bak
+
+# ---------- OS ----------
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+
+# ---------- App output ----------
+src/WebsiteBuilder.App/wwwroot/

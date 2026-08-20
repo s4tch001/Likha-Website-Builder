@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Core domain library: the canonical Project JSON model plus service
+    abstractions. Pure .NET with no WPF or WebView dependencies so it stays
+    unit-testable and reusable by CodeGen, the Bridge and the App.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,270 @@
+<Window x:Class="WebsiteBuilder.App.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:avalonDock="https://github.com/Dirkster99/AvalonDock"
+        xmlns:avalonDockTheme="clr-namespace:AvalonDock.Themes;assembly=AvalonDock.Themes.VS2013"
+        xmlns:vm="clr-namespace:WebsiteBuilder.App.ViewModels"
+        xmlns:views="clr-namespace:WebsiteBuilder.App.Views"
+        xmlns:panels="clr-namespace:WebsiteBuilder.App.Views.Panels"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=vm:MainWindowViewModel}"
+        Title="{Binding Title}"
+        Icon="/Assets/likha.ico"
+        Height="820" Width="1320"
+        MinHeight="600" MinWidth="1000"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource App.Background}"
+        Foreground="{StaticResource App.Foreground}"
+        TextOptions.TextFormattingMode="Display">
+
+    <Window.InputBindings>
+        <KeyBinding Modifiers="Control" Key="N" Command="{Binding Registry[file.new].Command}" />
+        <KeyBinding Modifiers="Control" Key="O" Command="{Binding Registry[file.open].Command}" />
+        <KeyBinding Modifiers="Control" Key="S" Command="{Binding Registry[file.save].Command}" />
+        <KeyBinding Modifiers="Control+Shift" Key="S" Command="{Binding Registry[file.saveAs].Command}" />
+        <KeyBinding Modifiers="Control" Key="Z" Command="{Binding Registry[edit.undo].Command}" />
+        <KeyBinding Modifiers="Control" Key="Y" Command="{Binding Registry[edit.redo].Command}" />
+        <KeyBinding Modifiers="Control+Shift" Key="P" Command="{Binding CommandPalette.ToggleCommand}" />
+        <KeyBinding Modifiers="Control" Key="D0" Command="{Binding Registry[view.zoomReset].Command}" />
+    </Window.InputBindings>
+
+    <Grid>
+        <DockPanel>
+
+            <!-- ===================== Ribbon ===================== -->
+            <Border DockPanel.Dock="Top" Background="{StaticResource App.Surface}"
+                    BorderBrush="{StaticResource App.Border}" BorderThickness="0,0,0,1">
+                <TabControl Style="{StaticResource RibbonTabControl}">
+                    <TabControl.Resources>
+                        <Style TargetType="TabItem" BasedOn="{StaticResource RibbonTabItem}" />
+                    </TabControl.Resources>
+
+                    <!-- File -->
+                    <TabItem Header="File">
+                        <StackPanel Orientation="Horizontal" Margin="6,4">
+                            <Button Style="{StaticResource RibbonButton}" Content="New"
+                                    ToolTip="Ctrl+N" Command="{Binding Registry[file.new].Command}" />
+                            <Button Style="{StaticResource RibbonButton}" Content="Open"
+                                    ToolTip="Ctrl+O" Command="{Binding Registry[file.open].Command}" />
+                            <Border Style="{StaticResource RibbonSeparator}" />
+                            <Button Style="{StaticResource RibbonButton}" Content="Save"
+                                    ToolTip="Ctrl+S" Command="{Binding Registry[file.save].Command}" />
+                            <Button Style="{StaticResource RibbonButton}" Content="Save As"
+                                    ToolTip="Ctrl+Shift+S" Command="{Binding Registry[file.saveAs].Command}" />
+                            <Border Style="{StaticResource RibbonSeparator}" />
+                            <Button Style="{StaticResource RibbonButton}" Content="Export HTML"
+                                    ToolTip="Export a static HTML/CSS/JS site"
+                                    Command="{Binding Registry[file.exportHtml].Command}" />
+                            <Button Style="{StaticResource RibbonButton}" Content="Export Next.js"
+                                    ToolTip="Export an npm-ready Next.js + React + TypeScript project"
+                                    Command="{Binding Registry[file.exportReact].Command}" />
+                        </StackPanel>
+                    </TabItem>
+
+                    <!-- Edit -->
+                    <TabItem Header="Edit">
+                        <StackPanel Orientation="Horizontal" Margin="6,4">
+                            <Button Style="{StaticResource RibbonButton}" Content="Undo"
+                                    ToolTip="Ctrl+Z" Command="{Binding Registry[edit.undo].Command}" />
+                            <Button Style="{StaticResource RibbonButton}" Content="Redo"
+                                    ToolTip="Ctrl+Y" Command="{Binding Registry[edit.redo].Command}" />
+                            <Border Style="{StaticResource RibbonSeparator}" />
+                            <Button Style="{StaticResource RibbonButton}" Content="Copy"
+                                    Command="{Binding Registry[edit.copy].Command}" />
+                            <Button Style="{StaticResource RibbonButton}" Content="Paste"
+                                    Command="{Binding Registry[edit.paste].Command}" />
+                            <Button Style="{StaticResource RibbonButton}" Content="Duplicate"
+                                    Command="{Binding Registry[edit.duplicate].Command}" />
+                            <Button Style="{StaticResource RibbonButton}" Content="Delete"
+                                    Command="{Binding Registry[edit.delete].Command}" />
+                        </StackPanel>
+                    </TabItem>
+
+                    <!-- Arrange -->
+                    <TabItem Header="Arrange">
+                        <StackPanel Orientation="Horizontal" Margin="6,4">
+                            <Button Style="{StaticResource RibbonButton}" Content="Align Left"
+                                    Command="{Binding Registry[arrange.alignLeft].Command}" />
+                            <Button Style="{StaticResource RibbonButton}" Content="Center"
+                                    Command="{Binding Registry[arrange.alignCenterH].Command}" />
+                            <Button Style="{StaticResource RibbonButton}" Content="Align Right"
+                                    Command="{Binding Registry[arrange.alignRight].Command}" />
+                            <Border Style="{StaticResource RibbonSeparator}" />
+                            <Button Style="{StaticResource RibbonButton}" Content="Align Top"
+                                    Command="{Binding Registry[arrange.alignTop].Command}" />
+                            <Button Style="{StaticResource RibbonButton}" Content="Middle"
+                                    Command="{Binding Registry[arrange.alignMiddle].Command}" />
+                            <Button Style="{StaticResource RibbonButton}" Content="Align Bottom"
+                                    Command="{Binding Registry[arrange.alignBottom].Command}" />
+                            <Border Style="{StaticResource RibbonSeparator}" />
+                            <Button Style="{StaticResource RibbonButton}" Content="Distribute H"
+                                    Command="{Binding Registry[arrange.distributeH].Command}" />
+                            <Button Style="{StaticResource RibbonButton}" Content="Distribute V"
+                                    Command="{Binding Registry[arrange.distributeV].Command}" />
+                        </StackPanel>
+                    </TabItem>
+
+                    <!-- View -->
+                    <TabItem Header="View">
+                        <StackPanel Orientation="Horizontal" Margin="6,4">
+                            <Button Style="{StaticResource RibbonButton}" Content="Project"
+                                    Command="{Binding Registry[view.projectExplorer].Command}" />
+                            <Button Style="{StaticResource RibbonButton}" Content="Layers"
+                                    Command="{Binding Registry[view.layers].Command}" />
+                            <Button Style="{StaticResource RibbonButton}" Content="Components"
+                                    Command="{Binding Registry[view.components].Command}" />
+                            <Button Style="{StaticResource RibbonButton}" Content="Assets"
+                                    Command="{Binding Registry[view.assets].Command}" />
+                            <Button Style="{StaticResource RibbonButton}" Content="Properties"
+                                    Command="{Binding Registry[view.properties].Command}" />
+                            <Button Style="{StaticResource RibbonButton}" Content="Files"
+                                    Command="{Binding Registry[view.files].Command}" />
+                            <Border Style="{StaticResource RibbonSeparator}" />
+                            <Button Style="{StaticResource RibbonButton}" Content="Reset Layout"
+                                    Command="{Binding Registry[view.resetLayout].Command}" />
+                            <Button Style="{StaticResource RibbonButton}" Content="Command Palette"
+                                    ToolTip="Ctrl+Shift+P" Command="{Binding Registry[view.commandPalette].Command}" />
+                        </StackPanel>
+                    </TabItem>
+
+                    <!-- Help -->
+                    <TabItem Header="Help">
+                        <StackPanel Orientation="Horizontal" Margin="6,4">
+                            <Button Style="{StaticResource RibbonButton}" Content="About"
+                                    Command="{Binding Registry[help.about].Command}" />
+                        </StackPanel>
+                    </TabItem>
+                </TabControl>
+            </Border>
+
+            <!-- ===================== Status bar ===================== -->
+            <Border DockPanel.Dock="Bottom" Background="{StaticResource App.Surface}"
+                    BorderBrush="{StaticResource App.Border}" BorderThickness="0,1,0,0" Height="26">
+                <Grid Margin="12,0">
+                    <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center"
+                               Foreground="{StaticResource App.ForegroundMuted}" FontSize="12" />
+                    <TextBlock HorizontalAlignment="Right" VerticalAlignment="Center"
+                               Foreground="{StaticResource App.ForegroundMuted}" FontSize="12"
+                               Text="{Binding Canvas.Zoom, StringFormat=Zoom {0:0}%}" />
+                </Grid>
+            </Border>
+
+            <!-- ===================== Docking workspace ===================== -->
+            <avalonDock:DockingManager x:Name="DockManager" Background="{StaticResource App.Background}">
+                <avalonDock:DockingManager.Theme>
+                    <avalonDockTheme:Vs2013DarkTheme />
+                </avalonDock:DockingManager.Theme>
+
+                <avalonDock:LayoutRoot>
+                    <avalonDock:LayoutPanel Orientation="Horizontal">
+
+                        <!-- Left column -->
+                        <avalonDock:LayoutAnchorablePane DockWidth="250">
+                            <avalonDock:LayoutAnchorable x:Name="ComponentsPane" Title="Components"
+                                                         ContentId="panel.components" CanClose="False">
+                                <panels:ComponentsView DataContext="{Binding Components}" />
+                            </avalonDock:LayoutAnchorable>
+                            <avalonDock:LayoutAnchorable x:Name="ProjectPane" Title="Project"
+                                                         ContentId="panel.projectExplorer" CanClose="False">
+                                <panels:ProjectExplorerView DataContext="{Binding ProjectExplorer}" />
+                            </avalonDock:LayoutAnchorable>
+                        </avalonDock:LayoutAnchorablePane>
+
+                        <!-- Center column (canvas + bottom dock) -->
+                        <avalonDock:LayoutPanel Orientation="Vertical">
+                            <avalonDock:LayoutDocumentPane>
+                                <avalonDock:LayoutDocument Title="Canvas" ContentId="doc.canvas" CanClose="False">
+                                    <views:CanvasView DataContext="{Binding Canvas}" />
+                                </avalonDock:LayoutDocument>
+                            </avalonDock:LayoutDocumentPane>
+                            <avalonDock:LayoutAnchorablePane DockHeight="200">
+                                <avalonDock:LayoutAnchorable x:Name="FilesPane" Title="Files"
+                                                             ContentId="panel.fileManager" CanClose="False">
+                                    <panels:FileManagerView DataContext="{Binding FileManager}" />
+                                </avalonDock:LayoutAnchorable>
+                                <avalonDock:LayoutAnchorable x:Name="AssetsPane" Title="Assets"
+                                                             ContentId="panel.assets" CanClose="False">
+                                    <panels:AssetsView DataContext="{Binding Assets}" />
+                                </avalonDock:LayoutAnchorable>
+                            </avalonDock:LayoutAnchorablePane>
+                        </avalonDock:LayoutPanel>
+
+                        <!-- Right column (layers over properties) -->
+                        <avalonDock:LayoutPanel Orientation="Vertical" DockWidth="300">
+                            <avalonDock:LayoutAnchorablePane>
+                                <avalonDock:LayoutAnchorable x:Name="LayersPane" Title="Layers"
+                                                             ContentId="panel.layers" CanClose="False">
+                                    <panels:LayersView DataContext="{Binding Layers}" />
+                                </avalonDock:LayoutAnchorable>
+                            </avalonDock:LayoutAnchorablePane>
+                            <avalonDock:LayoutAnchorablePane>
+                                <avalonDock:LayoutAnchorable x:Name="PropertiesPane" Title="Properties"
+                                                             ContentId="panel.propertyInspector" CanClose="False">
+                                    <panels:PropertyInspectorView DataContext="{Binding PropertyInspector}" />
+                                </avalonDock:LayoutAnchorable>
+                            </avalonDock:LayoutAnchorablePane>
+                        </avalonDock:LayoutPanel>
+
+                    </avalonDock:LayoutPanel>
+                </avalonDock:LayoutRoot>
+            </avalonDock:DockingManager>
+        </DockPanel>
+
+        <!-- ===================== Command palette overlay ===================== -->
+        <Grid x:Name="PaletteOverlay" Background="#99000000"
+              IsVisibleChanged="PaletteOverlay_IsVisibleChanged"
+              Visibility="{Binding CommandPalette.IsOpen, Converter={StaticResource BoolToVis}}">
+            <Grid.InputBindings>
+                <MouseBinding MouseAction="LeftClick" Command="{Binding CommandPalette.CloseCommand}" />
+            </Grid.InputBindings>
+            <Border Width="580" MaxHeight="440" VerticalAlignment="Top" Margin="0,90,0,0"
+                    Background="{StaticResource App.Surface}" BorderBrush="{StaticResource App.Border}"
+                    BorderThickness="1" CornerRadius="8">
+                <Border.InputBindings>
+                    <!-- Swallow clicks inside the palette so the overlay close handler does not fire -->
+                    <MouseBinding MouseAction="LeftClick" Command="{x:Static ApplicationCommands.NotACommand}" />
+                </Border.InputBindings>
+                <DockPanel Margin="10">
+                    <TextBox x:Name="PaletteSearch" DockPanel.Dock="Top" Style="{StaticResource SearchBox}"
+                             Text="{Binding CommandPalette.Query, UpdateSourceTrigger=PropertyChanged}">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Enter" Command="{Binding CommandPalette.ExecuteSelectedCommand}" />
+                            <KeyBinding Key="Escape" Command="{Binding CommandPalette.CloseCommand}" />
+                        </TextBox.InputBindings>
+                    </TextBox>
+                    <ListBox Margin="0,10,0,0" MaxHeight="360"
+                             ItemsSource="{Binding CommandPalette.Results}"
+                             SelectedItem="{Binding CommandPalette.SelectedCommand}"
+                             Background="Transparent" BorderThickness="0"
+                             Foreground="{StaticResource App.Foreground}">
+                        <ListBox.InputBindings>
+                            <MouseBinding MouseAction="LeftDoubleClick"
+                                          Command="{Binding CommandPalette.ExecuteSelectedCommand}" />
+                            <KeyBinding Key="Enter" Command="{Binding CommandPalette.ExecuteSelectedCommand}" />
+                            <KeyBinding Key="Escape" Command="{Binding CommandPalette.CloseCommand}" />
+                        </ListBox.InputBindings>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="6,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding Category}" Width="64"
+                                                   Foreground="{StaticResource App.ForegroundMuted}" />
+                                        <TextBlock Text="{Binding Title}" />
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="1" Text="{Binding GestureText}"
+                                               Foreground="{StaticResource App.ForegroundMuted}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

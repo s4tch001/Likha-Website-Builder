@@ -1,0 +1,28 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+
+    <!--
+        Baseline dark palette for the application shell. Colors are defined once
+        here and referenced by key throughout the UI so theming (including a
+        future light mode) is a single-file change. Values approximate the
+        neutral dark surfaces used by tools like Figma / VS.
+    -->
+
+    <!-- Raw colors -->
+    <Color x:Key="Color.Background">#FF1E1E22</Color>
+    <Color x:Key="Color.Surface">#FF26262B</Color>
+    <Color x:Key="Color.Border">#FF36363C</Color>
+    <Color x:Key="Color.Foreground">#FFE6E6EB</Color>
+    <Color x:Key="Color.ForegroundMuted">#FF9A9AA5</Color>
+    <Color x:Key="Color.Accent">#FF2563EB</Color>
+
+    <!-- Brushes (what XAML actually binds to) -->
+    <SolidColorBrush x:Key="App.Background" Color="{StaticResource Color.Background}" />
+    <SolidColorBrush x:Key="App.Surface" Color="{StaticResource Color.Surface}" />
+    <SolidColorBrush x:Key="App.Border" Color="{StaticResource Color.Border}" />
+    <SolidColorBrush x:Key="App.Foreground" Color="{StaticResource Color.Foreground}" />
+    <SolidColorBrush x:Key="App.ForegroundMuted" Color="{StaticResource Color.ForegroundMuted}" />
+    <SolidColorBrush x:Key="App.Accent" Color="{StaticResource Color.Accent}" />
+
+</ResourceDictionary>

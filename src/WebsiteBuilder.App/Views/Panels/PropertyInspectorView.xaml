@@ -1,0 +1,451 @@
+<UserControl x:Class="WebsiteBuilder.App.Views.Panels.PropertyInspectorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:WebsiteBuilder.App.ViewModels.Panels"
+             xmlns:behaviors="clr-namespace:WebsiteBuilder.App.Behaviors"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:PropertyInspectorViewModel}"
+             Background="{StaticResource App.Surface}">
+    <UserControl.Resources>
+        <!-- Compact numeric/text field -->
+        <Style x:Key="FieldBox" TargetType="TextBox" BasedOn="{StaticResource SearchBox}">
+            <Setter Property="Padding" Value="6,4" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <!-- Pressing Enter applies the value immediately. -->
+            <Setter Property="behaviors:TextBoxBehavior.UpdateSourceOnEnter" Value="True" />
+        </Style>
+        <Style x:Key="FieldLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource App.ForegroundMuted}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+        </Style>
+    </UserControl.Resources>
+
+    <DockPanel>
+        <TextBlock DockPanel.Dock="Top" Style="{StaticResource PanelHeaderText}"
+                   Text="{Binding SelectionTitle}" TextTrimming="CharacterEllipsis" />
+        <Grid>
+            <!-- Empty state -->
+            <TextBlock Style="{StaticResource MutedText}"
+                       Text="Select an element to edit its properties."
+                       TextWrapping="Wrap" TextAlignment="Center" Margin="16"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                       Visibility="{Binding HasSelection, Converter={StaticResource InverseBoolToVis}}" />
+
+            <Grid Visibility="{Binding HasSelection, Converter={StaticResource BoolToVis}}">
+                <!-- Multi-selection note -->
+                <TextBlock Style="{StaticResource MutedText}"
+                           Text="Multiple elements selected. Per-element editing is shown for a single selection."
+                           TextWrapping="Wrap" TextAlignment="Center" Margin="16"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Visibility="{Binding IsSingle, Converter={StaticResource InverseBoolToVis}}" />
+
+                <!-- Single-element editable form -->
+                <DockPanel Visibility="{Binding IsSingle, Converter={StaticResource BoolToVis}}">
+                    <!-- Locked banner: the form below is disabled until the layer is unlocked. -->
+                    <Border DockPanel.Dock="Top"
+                            Visibility="{Binding IsLocked, Converter={StaticResource BoolToVis}}"
+                            Background="#3A2F1A" BorderBrush="#E6B450" BorderThickness="1"
+                            CornerRadius="3" Margin="10,6,10,2" Padding="8,5">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE72E;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                                       Foreground="#E6B450" VerticalAlignment="Center" Margin="0,0,6,0" />
+                            <TextBlock Text="Locked — unlock in the Layers panel to edit."
+                                       Foreground="#E6B450" FontSize="11" VerticalAlignment="Center"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="10,4,10,12" IsEnabled="{Binding CanEdit}">
+
+                        <!-- Breakpoint-override context: shown only when editing a non-base breakpoint. -->
+                        <Border Visibility="{Binding IsBreakpointOverride, Converter={StaticResource BoolToVis}}"
+                                Background="#1E2C44" BorderBrush="#3B82F6" BorderThickness="1"
+                                CornerRadius="3" Margin="0,2,0,8" Padding="8,5">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                    <TextBlock Foreground="#9CC3FF" FontSize="11" FontWeight="SemiBold"
+                                               Text="{Binding BreakpointLabel, StringFormat=Editing {0}}" />
+                                    <TextBlock Foreground="#7E9BC2" FontSize="10" TextWrapping="Wrap"
+                                               Text="Changes apply to this breakpoint only." />
+                                </StackPanel>
+                                <Button Grid.Column="1" Content="Reset all" VerticalAlignment="Center"
+                                        Style="{StaticResource RibbonButton}" Padding="6,2"
+                                        ToolTip="Clear all overrides at this breakpoint"
+                                        Command="{Binding ResetAllOverridesCommand}" />
+                            </Grid>
+                        </Border>
+
+                        <TextBlock Style="{StaticResource PanelHeaderText}" Margin="0,4,0,6" Text="LAYOUT" />
+
+                        <!-- X / Y -->
+                        <Grid Margin="0,2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="18" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="18" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}" Text="X" />
+                            <TextBox Grid.Column="1" Style="{StaticResource FieldBox}"
+                                     Text="{Binding X, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
+                            <TextBlock Grid.Column="2" Style="{StaticResource FieldLabel}" Text="Y" />
+                            <TextBox Grid.Column="3" Style="{StaticResource FieldBox}" Margin="0"
+                                     Text="{Binding Y, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
+                        </Grid>
+
+                        <!-- W / H -->
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="18" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="18" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}" Text="W" />
+                            <TextBox Grid.Column="1" Style="{StaticResource FieldBox}"
+                                     Text="{Binding Width, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
+                            <TextBlock Grid.Column="2" Style="{StaticResource FieldLabel}" Text="H" />
+                            <TextBox Grid.Column="3" Style="{StaticResource FieldBox}" Margin="0"
+                                     Text="{Binding Height, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
+                        </Grid>
+
+                        <!-- Rotation -->
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="70" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Rotation" />
+                            <TextBox Grid.Column="1" Style="{StaticResource FieldBox}" Margin="0"
+                                     Text="{Binding Rotation, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}" />
+                        </Grid>
+
+                        <!-- Opacity -->
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="70" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="44" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Opacity" />
+                            <Slider Grid.Column="1" Minimum="0" Maximum="100" VerticalAlignment="Center"
+                                    Value="{Binding Opacity, Mode=TwoWay}" />
+                            <TextBlock Grid.Column="2" Style="{StaticResource FieldLabel}"
+                                       HorizontalAlignment="Right"
+                                       Text="{Binding Opacity, StringFormat={}{0:0}%}" />
+                        </Grid>
+
+                        <!-- Content -->
+                        <TextBlock Style="{StaticResource PanelHeaderText}" Margin="0,10,0,6" Text="CONTENT" />
+                        <TextBox Style="{StaticResource FieldBox}" Margin="0,0,0,2" Height="56"
+                                 AcceptsReturn="True" TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto"
+                                 VerticalContentAlignment="Top"
+                                 behaviors:TextBoxBehavior.UpdateSourceOnEnter="False"
+                                 Text="{Binding Text, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+
+                        <!-- Typography -->
+                        <TextBlock Style="{StaticResource PanelHeaderText}" Margin="0,10,0,6" Text="TYPOGRAPHY" />
+
+                        <Grid Margin="0,2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="44" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="52" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Size" />
+                            <TextBox Grid.Column="1" Style="{StaticResource FieldBox}"
+                                     Text="{Binding FontSize, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                            <TextBlock Grid.Column="2" Style="{StaticResource FieldLabel}" Text="Weight" />
+                            <ComboBox Grid.Column="3" VerticalAlignment="Center"
+                                      Style="{StaticResource DarkComboBox}"
+                                      ItemsSource="{Binding FontWeightOptions}"
+                                      SelectedItem="{Binding FontWeight, Mode=TwoWay}" />
+                        </Grid>
+
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="44" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="52" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Line" />
+                            <TextBox Grid.Column="1" Style="{StaticResource FieldBox}"
+                                     Text="{Binding LineHeight, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                            <TextBlock Grid.Column="2" Style="{StaticResource FieldLabel}" Text="Spacing" />
+                            <TextBox Grid.Column="3" Style="{StaticResource FieldBox}" Margin="0"
+                                     Text="{Binding LetterSpacing, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                        </Grid>
+
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="44" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Align" />
+                            <ComboBox Grid.Column="1" VerticalAlignment="Center"
+                                      Style="{StaticResource DarkComboBox}"
+                                      ItemsSource="{Binding TextAlignOptions}"
+                                      SelectedItem="{Binding TextAlign, Mode=TwoWay}" />
+                        </Grid>
+
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="44" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Color" />
+                            <TextBox Grid.Column="1" Style="{StaticResource FieldBox}"
+                                     Text="{Binding TextColor, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                            <Button Grid.Column="2" Width="22" Height="22"
+                                    Style="{StaticResource ColorSwatchButton}"
+                                    ToolTip="Pick a colour" Tag="text"
+                                    Click="OnPickColor"
+                                    Background="{Binding TextColor, Converter={StaticResource StringToBrush}}" />
+                        </Grid>
+
+                        <!-- Appearance -->
+                        <TextBlock Style="{StaticResource PanelHeaderText}" Margin="0,10,0,6" Text="APPEARANCE" />
+
+                        <!-- Background -->
+                        <Grid Margin="0,2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="44" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Fill" />
+                            <TextBox Grid.Column="1" Style="{StaticResource FieldBox}"
+                                     Text="{Binding Background, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                            <Button Grid.Column="2" Width="22" Height="22"
+                                    Style="{StaticResource ColorSwatchButton}"
+                                    ToolTip="Pick a colour" Tag="background"
+                                    Click="OnPickColor"
+                                    Background="{Binding Background, Converter={StaticResource StringToBrush}}" />
+                        </Grid>
+
+                        <!-- Border width + style -->
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="44" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="52" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Border" />
+                            <TextBox Grid.Column="1" Style="{StaticResource FieldBox}"
+                                     ToolTip="Border width (e.g. 1px)"
+                                     Text="{Binding BorderWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                            <TextBlock Grid.Column="2" Style="{StaticResource FieldLabel}" Text="Style" />
+                            <ComboBox Grid.Column="3" VerticalAlignment="Center"
+                                      Style="{StaticResource DarkComboBox}"
+                                      ItemsSource="{Binding BorderStyleOptions}"
+                                      SelectedItem="{Binding BorderStyle, Mode=TwoWay}" />
+                        </Grid>
+
+                        <!-- Border colour -->
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="44" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Stroke" />
+                            <TextBox Grid.Column="1" Style="{StaticResource FieldBox}"
+                                     Text="{Binding BorderColor, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                            <Button Grid.Column="2" Width="22" Height="22"
+                                    Style="{StaticResource ColorSwatchButton}"
+                                    ToolTip="Pick a colour" Tag="border"
+                                    Click="OnPickColor"
+                                    Background="{Binding BorderColor, Converter={StaticResource StringToBrush}}" />
+                        </Grid>
+
+                        <!-- Radius -->
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="44" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Radius" />
+                            <TextBox Grid.Column="1" Style="{StaticResource FieldBox}" Margin="0"
+                                     Text="{Binding BorderRadius, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                        </Grid>
+
+                        <!-- Shadow -->
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="44" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Shadow" />
+                            <TextBox Grid.Column="1" Style="{StaticResource FieldBox}" Margin="0"
+                                     ToolTip="e.g. 0 4px 12px rgba(0,0,0,0.3)"
+                                     Text="{Binding BoxShadow, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                        </Grid>
+
+                        <!-- Blend mode -->
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="44" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Blend" />
+                            <ComboBox Grid.Column="1" VerticalAlignment="Center"
+                                      Style="{StaticResource DarkComboBox}"
+                                      ItemsSource="{Binding BlendModeOptions}"
+                                      SelectedItem="{Binding BlendMode, Mode=TwoWay}" />
+                        </Grid>
+
+                        <!-- Advanced -->
+                        <TextBlock Style="{StaticResource PanelHeaderText}" Margin="0,10,0,6" Text="ADVANCED" />
+
+                        <Grid Margin="0,2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="52" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="52" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Overflow" />
+                            <ComboBox Grid.Column="1" VerticalAlignment="Center" Margin="0,0,8,0"
+                                      Style="{StaticResource DarkComboBox}"
+                                      ItemsSource="{Binding OverflowOptions}"
+                                      SelectedItem="{Binding Overflow, Mode=TwoWay}" />
+                            <TextBlock Grid.Column="2" Style="{StaticResource FieldLabel}" Text="Z-Index" />
+                            <TextBox Grid.Column="3" Style="{StaticResource FieldBox}" Margin="0"
+                                     Text="{Binding ZIndex, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                        </Grid>
+
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="52" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="52" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Visible" />
+                            <ComboBox Grid.Column="1" VerticalAlignment="Center" Margin="0,0,8,0"
+                                      Style="{StaticResource DarkComboBox}"
+                                      ItemsSource="{Binding VisibilityOptions}"
+                                      SelectedItem="{Binding Visibility, Mode=TwoWay}" />
+                            <TextBlock Grid.Column="2" Style="{StaticResource FieldLabel}" Text="Cursor" />
+                            <ComboBox Grid.Column="3" VerticalAlignment="Center"
+                                      Style="{StaticResource DarkComboBox}"
+                                      ItemsSource="{Binding CursorOptions}"
+                                      SelectedItem="{Binding Cursor, Mode=TwoWay}" />
+                        </Grid>
+
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="60" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Filter" />
+                            <TextBox Grid.Column="1" Style="{StaticResource FieldBox}" Margin="0"
+                                     ToolTip="e.g. blur(4px) brightness(1.1)"
+                                     Text="{Binding Filter, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                        </Grid>
+
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="60" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Transition" />
+                            <TextBox Grid.Column="1" Style="{StaticResource FieldBox}" Margin="0"
+                                     ToolTip="e.g. all 0.2s ease"
+                                     Text="{Binding Transition, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                        </Grid>
+
+                        <!-- Custom CSS (editable; also supports CSS variables) -->
+                        <TextBlock Style="{StaticResource PanelHeaderText}" Margin="0,10,0,6" Text="CUSTOM CSS" />
+                        <ItemsControl ItemsSource="{Binding OtherStyles}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="104" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="22" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding Name}" VerticalAlignment="Center"
+                                                   Foreground="{StaticResource App.ForegroundMuted}" FontSize="12"
+                                                   TextTrimming="CharacterEllipsis" Margin="0,0,6,0" />
+                                        <TextBox Grid.Column="1" Style="{StaticResource FieldBox}"
+                                                 Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                                        <Button Grid.Column="2" Content="✕" Width="20" Height="20"
+                                                Style="{StaticResource RibbonButton}" Padding="0" FontSize="11"
+                                                ToolTip="Remove" Command="{Binding RemoveCommand}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!-- Add custom property -->
+                        <Grid Margin="0,6,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="104" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0" Style="{StaticResource FieldBox}"
+                                     ToolTip="Property (e.g. --brand)"
+                                     Text="{Binding NewPropertyName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBox Grid.Column="1" Style="{StaticResource FieldBox}"
+                                     ToolTip="Value"
+                                     Text="{Binding NewPropertyValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <Button Grid.Column="2" Content="Add" Width="40" Height="26"
+                                    Style="{StaticResource RibbonButton}"
+                                    Command="{Binding AddCustomPropertyCommand}" />
+                        </Grid>
+
+                        <!-- Breakpoint overrides: properties set at the active non-base breakpoint.
+                             Editing a row updates the override; ✕ resets it to the inherited value. -->
+                        <StackPanel Visibility="{Binding IsBreakpointOverride, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Style="{StaticResource PanelHeaderText}" Margin="0,12,0,6"
+                                       Text="{Binding BreakpointLabel, StringFormat=OVERRIDES · {0}}" />
+                            <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,4"
+                                       TextWrapping="Wrap"
+                                       Text="These properties differ from the base. ✕ reverts one to inherited." />
+                            <ItemsControl ItemsSource="{Binding Overrides}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="104" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="22" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="{Binding Name}" VerticalAlignment="Center"
+                                                       Foreground="#9CC3FF" FontSize="12"
+                                                       TextTrimming="CharacterEllipsis" Margin="0,0,6,0" />
+                                            <TextBox Grid.Column="1" Style="{StaticResource FieldBox}"
+                                                     Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                                            <Button Grid.Column="2" Content="✕" Width="20" Height="20"
+                                                    Style="{StaticResource RibbonButton}" Padding="0" FontSize="11"
+                                                    ToolTip="Reset to inherited" Command="{Binding RemoveCommand}" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </StackPanel>
+                    </ScrollViewer>
+                </DockPanel>
+            </Grid>
+        </Grid>
+    </DockPanel>
+</UserControl>
