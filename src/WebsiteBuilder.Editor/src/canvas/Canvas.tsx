@@ -64,6 +64,19 @@ function renderedElement(id: string): HTMLElement | null {
   return document.getElementById(`wb-element-${id}`);
 }
 
+function capturePointer(element: HTMLElement, pointerId: number): void {
+  try {
+    element.setPointerCapture(pointerId);
+  } catch {
+    // Synthetic automation events have no active pointer; real pointer input does.
+  }
+}
+
+function releasePointer(element: HTMLElement, pointerId: number): void {
+  if (element.hasPointerCapture(pointerId))
+    element.releasePointerCapture(pointerId);
+}
+
 interface ElementDrag {
   id: string;
   startClientX: number;
@@ -439,7 +452,7 @@ export default function Canvas() {
       // Panning takes priority (space-drag or middle mouse).
       if (e.button === 1 || (e.button === 0 && spaceDown)) {
         e.preventDefault();
-        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+        capturePointer(e.currentTarget as HTMLElement, e.pointerId);
         const state = useEditorStore.getState();
         panState.current = {
           startX: e.clientX,
@@ -466,7 +479,7 @@ export default function Canvas() {
       // Empty canvas / page root → begin a marquee selection.
       if (!id || isRoot || !store.project) {
         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+        capturePointer(e.currentTarget as HTMLElement, e.pointerId);
         marquee.current = {
           startX: e.clientX - rect.left,
           startY: e.clientY - rect.top,
@@ -503,7 +516,7 @@ export default function Canvas() {
         return;
       }
 
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      capturePointer(e.currentTarget as HTMLElement, e.pointerId);
       elementDrag.current = {
         id,
         startClientX: e.clientX,
@@ -667,7 +680,7 @@ export default function Canvas() {
   const endInteraction = useCallback(
     (e: React.PointerEvent) => {
       if (panState.current) {
-        (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+        releasePointer(e.currentTarget as HTMLElement, e.pointerId);
         panState.current = null;
         setIsPanning(false);
         return;
@@ -677,7 +690,7 @@ export default function Canvas() {
       const mq = marquee.current;
       if (mq) {
         marquee.current = null;
-        (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+        releasePointer(e.currentTarget as HTMLElement, e.pointerId);
         const rectScreen = marqueeRect;
         setMarqueeRect(null);
 
@@ -714,7 +727,7 @@ export default function Canvas() {
       if (!drag) {
         return;
       }
-      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+      releasePointer(e.currentTarget as HTMLElement, e.pointerId);
 
       if (drag.moved) {
         const store = useEditorStore.getState();

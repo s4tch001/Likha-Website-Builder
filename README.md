@@ -1,19 +1,20 @@
 # Likha - Website Builder
 
 A professional Windows desktop **visual website builder** (Webflow/Framer-class) built with
-**C# / .NET 8 / WPF / WebView2**, hosting a **Next.js + React + TypeScript** visual editor. Designs are stored as
+**C# / .NET 10 LTS / WPF / WebView2**, hosting a **Next.js + React + TypeScript** visual editor. Designs are stored as
 a canonical **Project JSON** model and exported as clean **HTML5 / CSS3 / JavaScript** and **React**
 source — never screenshots or canvas dumps.
 
-> Status: **Phases 1–12, asset foundation 13a, and platform migrations M1–M2 complete.** The
-> drag-and-drop editor, secure asset import, project persistence, and exporters are implemented.
+> Status: **Phases 1–17 are complete.** The editor,
+> secure asset pipeline, reusable block library, persistence, exporters, undo/redo, large-canvas
+> performance architecture, and production package pipeline are implemented.
 
 ## Architecture
 
 ```
 WebsiteBuilder.sln
 ├── src/
-│   ├── WebsiteBuilder.App       WPF (.NET 8) shell + WebView2 host + DI/Host bootstrap
+│   ├── WebsiteBuilder.App       WPF (.NET 10) shell + WebView2 host + DI/Host bootstrap
 │   ├── WebsiteBuilder.Core      Domain model (Project JSON), services, serialization — no UI deps
 │   ├── WebsiteBuilder.Bridge    Typed JSON-RPC contract (IEditorBridge) between WPF and the editor
 │   ├── WebsiteBuilder.CodeGen   Project JSON → HTML/CSS/JS and React emitters (pure, testable)
@@ -31,29 +32,39 @@ WebsiteBuilder.sln
 - **WPF foundation:** CommunityToolkit.Mvvm + Microsoft.Extensions DI / Hosting.
 
 ## Prerequisites
-- **.NET 8 SDK** — install with `winget install Microsoft.DotNet.SDK.8` or from <https://aka.ms/dotnet/download>.
-- **Node.js 20.9+** and **npm** (verified with Node 26).
+- **.NET 10 SDK** (the repository also supports its ignored local `.dotnet-sdk` runtime).
+- **Node.js 24+** and **npm**.
 - **WebView2 Runtime** (ships with current Windows 10/11; otherwise install the Evergreen runtime).
 
 ## Build & run
 
 ### Desktop app (WPF)
 ```sh
-dotnet build WebsiteBuilder.sln
-dotnet test
-dotnet run --project src/WebsiteBuilder.App
+.\.dotnet-sdk\dotnet.exe build WebsiteBuilder.sln
+.\.dotnet-sdk\dotnet.exe test WebsiteBuilder.sln
+.\.dotnet-sdk\dotnet.exe run --project src/WebsiteBuilder.App
 ```
 The app launches the complete dark-themed editor shell.
 
 ### React editor
 ```sh
 cd src/WebsiteBuilder.Editor
-npm install
+npm ci
 npm run dev      # http://127.0.0.1:3000
 npm run build    # static export, then copies it to src/WebsiteBuilder.App/wwwroot
 ```
 The WPF host loads this bundle inside WebView2 and establishes the typed JSON-RPC bridge handshake.
 
-## Roadmap
-Phase 13 continues with the asset browser and canvas integration; Phases 14–17 cover the component
-library, undo/redo, performance work, and final polish.
+## Release package
+
+Create a self-contained Windows x64 package (including the static editor) with:
+
+```powershell
+.\scripts\package-release.ps1 -Version 0.1.0
+```
+
+Output is written under `artifacts/release/` as a ZIP with a per-file SHA-256 manifest. Pass
+`-CertificateThumbprint` to sign the executable with a private-key certificate in the current
+user's Windows certificate store. The tag/manual release workflow produces the same unsigned CI
+artifact; public distribution still requires a publisher-owned code-signing certificate and the
+desired installer identity.

@@ -25,12 +25,10 @@ builder** (Webflow/Framer-class). Locked stack:
 - Docking: **AvalonDock (Dirkster fork)** 4.72.0 + VS2013 dark theme.
 
 ### ⚠️ WORKING STYLE — the user's standing rule
-**Split EVERY build phase into smaller sub-phases (e.g. 8a, 8b, 8c) and deliver ONE
-sub-phase per turn**, pausing for confirmation between them. The user is mindful of
-their Claude usage limit. Do NOT attempt a whole large phase in a single turn.
-At the start of a phase, break it into a few coherent, independently-verifiable
-chunks; implement + verify ONE chunk; end by stating what the next sub-phase covers.
-The user often writes in **Filipino/Tagalog**; reply in kind.
+Split large work into coherent, independently verifiable sub-phases, but continue through
+successive sub-phases without waiting for confirmation. Update this handoff immediately after
+every completed sub-phase. Stop only when the remaining Codex usage reaches 10%. The user often
+writes in **Filipino/Tagalog**; reply in kind.
 
 ---
 
@@ -87,12 +85,12 @@ npm run build          # next build (static export) → copies out/ to ../Websit
 npm run format:check   # Prettier gate
 npm run lint           # ESLint + Next/React rules
 npm run typecheck      # TS 7 native `tsc --noEmit`
-npm run test:coverage  # 36 tests + enforced coverage floor
+npm run test:coverage  # 61 tests + enforced coverage floor
 
 # C# (from repo root):
 .\.dotnet-sdk\dotnet.exe restore WebsiteBuilder.sln
 .\.dotnet-sdk\dotnet.exe build WebsiteBuilder.sln -c Release --no-restore
-.\.dotnet-sdk\dotnet.exe test WebsiteBuilder.sln -c Release --no-restore  # 69 tests
+.\.dotnet-sdk\dotnet.exe test WebsiteBuilder.sln -c Release --no-restore  # 78 tests
 .\.dotnet-sdk\dotnet.exe run --project src/WebsiteBuilder.App
 ```
 
@@ -192,7 +190,7 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
 
 ---
 
-## 5. ✅ DONE (Phases 1–16 + 17a–17b + migrations M1–M3f; 0/0 build, 78 C# + 61 editor tests)
+## 5. ✅ DONE (Phases 1–17 + migrations M1–M3f; 0/0 build, 78 C# + 61 editor tests)
 
 - **Phase 1 — Scaffolding.** Solution, 5 src + 2 test projects, Project JSON model
   (ElementNode/Page/Project/Breakpoint), ProjectSerializer, and service interfaces.
@@ -363,6 +361,18 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
   bridge. A named keyboard-focusable canvas context menu provides Cut/Copy/Paste/Duplicate/Delete
   pointer actions. Tests cover fresh IDs, subtree copying, history/revision behavior, project reset,
   and bridge availability events; 61 editor and all 78 C# tests pass.
+- **Phase 17c — production packaging and embedded-host hardening (2026-08-20).** Added a
+  reproducible self-contained/ReadyToRun Windows x64 publish profile and packaging script that
+  performs a clean editor build, validates the embedded bundle, optionally applies and verifies
+  Authenticode signing, writes a per-file SHA-256 manifest, and creates a portable ZIP. Added a
+  least-privilege manual/tag GitHub Actions artifact workflow. Disabled WebView password autosave,
+  general autofill, pinch zoom, and swipe navigation; editor-process failures now surface in app
+  status. A package rehearsal produced an 80,027,749-byte ZIP with 554 payload files and passed a
+  packaged-executable startup smoke. Both CI workflows use the verified current official action
+  releases. Format/lint/native-TS7 typecheck, 61 editor tests and coverage, production export,
+  0-warning Release build, 78 C# tests, and npm/NuGet vulnerability audits all pass. Public
+  signing/installer identity remains an owner-supplied certificate/distribution decision; see
+  `docs/release/windows-package.md`.
 - **Migration M3a — repository safety baseline (2026-08-20).** Initialized Git on `main`,
   normalized repository text to LF through `.gitattributes` + `.editorconfig`, expanded ignore
   rules for generated build/typecheck/coverage output, local agent settings, environment files,
@@ -407,16 +417,19 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
 
 ---
 
-## 6. ⛔ NOT DONE — Phase 14 onward
+## 6. Follow-up backlog and external release boundaries
 
 - **Phase 16 — Performance is complete.** The reproducible 10k lab improved from 1.41 to 38.50
   updates/sec with stable subscriptions, viewport culling/spatial indexes, immutable path copies,
   and structurally shared history. Preserve the measured budgets in Phase 17; this is a 27.3× gain,
   not a claim of locked 60 fps at 10k.
-- **Phase 17 — Final polish (17a–17b complete).** Remaining: broader theming, animations, tabs,
-  packaging/installer, production hardening. (Optionally rename the actual exe to Likha.exe
-  here — currently AssemblyName=WebsiteBuilder is kept to avoid breaking data-folder/layout
-  paths and tooling.)
+- **Phase 17 — Final polish is complete.** Accessibility, clipboard/context interactions,
+  reproducible Windows packaging, release CI, and embedded-host production hardening are delivered.
+  The internal executable remains `WebsiteBuilder.exe`; changing it is an identity migration rather
+  than a polish fix because existing data/layout paths and release tooling depend on that name.
+- **External release boundary.** A publicly trusted signature and branded installer/MSIX require a
+  publisher-owned certificate, publisher/upgrade identity, and selected distribution channel. The
+  packaging script accepts the real certificate once supplied; do not commit or invent credentials.
 
 ### Known small TODOs / deferrals
 - Copy/Paste is implemented with a project-scoped internal element clipboard; it intentionally does
@@ -445,8 +458,10 @@ rule). Today's date context in prior sessions was 2026-06; convert relative date
 
 ## 8. Suggested first action in the new session
 
-Continue with **Phase 17 — final accessibility, interaction polish, packaging, and production hardening**. The user explicitly
-asked Codex to continue through later phases/sub-phases and to update this handoff after every
-completed sub-phase, stopping work when remaining Codex usage reaches 10%. Preserve the Phase
-13 canonical-asset boundary plus the M3 revision, validation, persistence, coverage, and
-dependency gates.
+Phase 17 is complete. Before public distribution, obtain the user's real publisher certificate,
+publisher/upgrade identity, preferred installer format/channel, and private Git remote URL. For
+product work, choose an explicitly scoped follow-up from the backlog (group resize, a typed advanced
+transform inspector, or richer interactive widgets) rather than treating those optional features as
+unfinished Phase 17. Preserve the Phase 13 canonical-asset boundary, Phase 16 performance budgets,
+and the M3 revision, validation, persistence, coverage, and dependency gates. Continue updating this
+handoff after every completed sub-phase and stop when remaining Codex usage reaches 10%.

@@ -10,6 +10,8 @@ artifacts/
 .dotnet-install.ps1
 [Dd]ebug/
 [Rr]elease/
+!docs/release/
+!docs/release/**
 TestResults/
 *.binlog
 *.trx

@@ -138,6 +138,12 @@ public sealed class EditorSession
             core.Settings.AreDevToolsEnabled = _useDevServer;
             core.Settings.IsStatusBarEnabled = false;
             core.Settings.AreDefaultContextMenusEnabled = _useDevServer;
+            core.Settings.IsPasswordAutosaveEnabled = false;
+            core.Settings.IsGeneralAutofillEnabled = false;
+            core.Settings.IsPinchZoomEnabled = false;
+            core.Settings.IsSwipeNavigationEnabled = false;
+            core.ProcessFailed += (_, args) =>
+                SetStatus($"Editor process failed ({args.ProcessFailedKind}). Restart Likha to recover the embedded editor.");
             core.NavigationStarting += (_, args) =>
             {
                 if (!IsAllowedEditorUri(args.Uri))

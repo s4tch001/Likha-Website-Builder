@@ -1,0 +1,53 @@
+name: Release package
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Semantic version (for example 0.1.0)
+        required: true
+        default: 0.1.0
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-dotnet@v5.3.0
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: src/WebsiteBuilder.Editor/package-lock.json
+      - name: Resolve package version
+        id: version
+        shell: pwsh
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          $value = $env:INPUT_VERSION
+          if (-not $value) { $value = $env:REF_NAME.TrimStart('v') }
+          if ($value -notmatch '^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$') { throw 'Invalid semantic version.' }
+          "value=$value" >> $env:GITHUB_OUTPUT
+      - name: Build portable release package
+        shell: pwsh
+        env:
+          PACKAGE_VERSION: ${{ steps.version.outputs.value }}
+        run: ./scripts/package-release.ps1 -Version $env:PACKAGE_VERSION
+      - uses: actions/upload-artifact@v7.0.1
+        with:
+          name: Likha-${{ steps.version.outputs.value }}-win-x64
+          path: artifacts/release/Likha-${{ steps.version.outputs.value }}-win-x64.zip
+          if-no-files-found: error
+          retention-days: 30
