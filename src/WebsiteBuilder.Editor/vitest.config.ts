@@ -7,7 +7,7 @@ export default defineConfig({
       reporter: ["text", "json-summary", "lcov"],
       include: [
         "src/bridge/**/*.ts",
-        "src/canvas/snap.ts",
+        "src/canvas/{renderOptimization,snap,spatialIndex,viewport}.ts",
         "src/host/**/*.ts",
         "src/model/**/*.ts",
         "src/store/**/*.ts",

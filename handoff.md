@@ -192,7 +192,7 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
 
 ---
 
-## 5. ✅ DONE (Phases 1–15 + 16a–16b + migrations M1–M3f; 0/0 build, 78 C# + 52 editor tests)
+## 5. ✅ DONE (Phases 1–15 + 16a–16c + migrations M1–M3f; 0/0 build, 78 C# + 57 editor tests)
 
 - **Phase 1 — Scaffolding.** Solution, 5 src + 2 test projects, Project JSON model
   (ElementNode/Page/Project/Breakpoint), ProjectSerializer, and service interfaces.
@@ -330,6 +330,14 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
   improved from 42,503.5 ms (1.41/s) to 18,015.8 ms (3.33/s), a 2.36× gain. DOM size remains
   10,181 and is the Phase 16c target. Production Next/static export, Release build, 78 C# tests,
   52 editor tests, lint/type/format, and coverage gates pass.
+- **Phase 16c — viewport culling and spatial indexing (2026-08-20).** Canvas rendering is now
+  proportional to the visible viewport plus 400 screen pixels of overscan, while preserving
+  selected/dragged ancestor paths and complete live-drag subtrees. A cached grid index accelerates
+  marquee queries and sorted axis indexes bound smart-guide candidates, with safe linear fallbacks
+  for oversized geometry. In the exact 10k scenario, settled project DOM nodes fell from 10,001 to
+  281 (450 total DOM nodes), cold-trace peak fell to 847, and 60 nudges improved to 3,891.5 ms
+  (15.42/s)—10.9× baseline throughput. Type/lint/format, 57 editor tests and raised 71.99% line
+  coverage, Next production export, Release build, and all 78 C# tests pass.
 - **Migration M3a — repository safety baseline (2026-08-20).** Initialized Git on `main`,
   normalized repository text to LF through `.gitattributes` + `.editorconfig`, expanded ignore
   rules for generated build/typecheck/coverage output, local agent settings, environment files,
@@ -376,9 +384,9 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
 
 ## 6. ⛔ NOT DONE — Phase 14 onward
 
-- **Phase 16 — Performance (16a–16b complete).** Remaining planned splits: 16c viewport culling/spatial
-  indexing; 16d structural-sharing/patch history and bridge payload optimization, with the same
-  10k trace rerun after every material change. The current measured result is 3.33 updates/sec,
+- **Phase 16 — Performance (16a–16c complete).** Remaining planned split: 16d
+  structural-sharing/patch history and bridge payload optimization, with the same 10k trace rerun
+  after every material change. The current measured result is 15.42 updates/sec,
   not 60 fps.
 - **Phase 17 — Final polish.** Theming, animations, context menus, tabs, accessibility,
   packaging/installer, production hardening. (Optionally rename the actual exe to Likha.exe
@@ -411,7 +419,7 @@ rule). Today's date context in prior sessions was 2026-06; convert relative date
 
 ## 8. Suggested first action in the new session
 
-Continue with **Phase 16c — viewport culling and spatial indexing**. The user explicitly
+Continue with **Phase 16d — structural-sharing mutations, compact history, and sync optimization**. The user explicitly
 asked Codex to continue through later phases/sub-phases and to update this handoff after every
 completed sub-phase, stopping work when remaining Codex usage reaches 10%. Preserve the Phase
 13 canonical-asset boundary plus the M3 revision, validation, persistence, coverage, and

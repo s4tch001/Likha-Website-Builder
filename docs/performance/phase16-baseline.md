@@ -84,3 +84,26 @@ visuals are synchronized only to the affected DOM elements; unchanged cloned lea
 This is a 2.36× interaction-throughput improvement, but the retained 10,181-element DOM still
 dominates style/layout cost. Phase 16c must reduce the mounted tree before the frame budget can be
 approached.
+
+## Phase 16c result — viewport culling and spatial indexes
+
+The canvas now renders the viewport plus 400 screen pixels of overscan. Selected/dragged nodes,
+their ancestor path, and complete actively dragged subtrees remain mounted. The render tree uses
+structural sharing and never mutates the canonical Project. Cached grid and sorted-axis indexes
+serve marquee and smart-guide queries; oversized geometry/query regions fall back to bounded
+linear scans instead of creating unbounded grid buckets.
+
+| Measurement | 16a baseline | After 16b | After 16c |
+| --- | ---: | ---: | ---: |
+| Peak elements in cold trace | 10,181 | 10,181 | 847 |
+| Settled total DOM elements | 10,181 | 10,181 | 450 |
+| Settled mounted project elements | 10,001 | 10,001 | 281 |
+| Largest cold-trace sibling set | 10,000 | 10,000 | 700 |
+| Cold-reload LCP | 156 ms | 148 ms | 135 ms |
+| Cold-reload CLS | 0.00 | 0.00 | 0.00 |
+| 60 right-arrow nudges | 42,503.5 ms | 18,015.8 ms | 3,891.5 ms |
+| Effective interaction throughput | 1.41/s | 3.33/s | 15.42/s |
+
+The nudge scenario is now 10.9× faster than baseline. Its remaining ~64.9 ms/update is dominated by
+full-Project mutation cloning plus full-snapshot history and synchronization work, addressed in
+Phase 16d.

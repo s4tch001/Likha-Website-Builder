@@ -1,5 +1,6 @@
 import type { ElementNode, Project } from "../model/types";
-import { collectElementRects, findNode } from "../store/editorStore";
+import { findNode } from "../store/editorStore";
+import { getProjectSpatialIndex, queryAxisTargets } from "./spatialIndex";
 
 /** Screen pixels within which a moving edge snaps to a target. */
 export const SNAP_THRESHOLD = 6;
@@ -63,12 +64,26 @@ export function computeSnap(
 
   const xTargets = [0, frameW / 2, frameW];
   const yTargets = [0, frameH / 2, frameH];
-  for (const r of collectElementRects(project, pageId)) {
-    if (drag.exclude.has(r.id)) {
-      continue;
-    }
-    xTargets.push(r.x, r.x + r.w / 2, r.x + r.w);
-    yTargets.push(r.y, r.y + r.h / 2, r.y + r.h);
+  const spatialIndex = getProjectSpatialIndex(project, pageId);
+  if (spatialIndex) {
+    xTargets.push(
+      ...queryAxisTargets(
+        spatialIndex,
+        "x",
+        xCandidates,
+        threshold,
+        drag.exclude,
+      ),
+    );
+    yTargets.push(
+      ...queryAxisTargets(
+        spatialIndex,
+        "y",
+        yCandidates,
+        threshold,
+        drag.exclude,
+      ),
+    );
   }
 
   const best = (cands: number[], targets: number[]) => {

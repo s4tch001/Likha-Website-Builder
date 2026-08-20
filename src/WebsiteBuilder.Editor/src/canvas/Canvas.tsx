@@ -18,7 +18,6 @@ import {
   parseComponentDragPayload,
 } from "../model/componentDrag";
 import {
-  collectElementRects,
   getAbsolutePosition,
   findNode,
   findParent,
@@ -35,10 +34,15 @@ import Ruler from "./Rulers";
 import SelectionOverlay from "./SelectionOverlay";
 import { useElementSize } from "./useElementSize";
 import { createEditorAssetUrlMap } from "./renderOptimization";
+import { getProjectSpatialIndex, queryElementRects } from "./spatialIndex";
+import { cullElementTree, type WorldRect } from "./viewport";
 
 const RULER_SIZE = 24;
 const FRAME_MIN_HEIGHT = 1000;
 const DRAG_THRESHOLD = 3; // px before a press becomes a move
+const VIRTUALIZATION_OVERSCAN_PX = 400;
+const INITIAL_VIEWPORT_WIDTH = 1920;
+const INITIAL_VIEWPORT_HEIGHT = 1080;
 
 /** Element types that may contain children (valid drop targets for nesting). */
 const CONTAINER_TYPES = new Set([
@@ -161,6 +165,30 @@ export default function Canvas() {
     y: null,
   });
 
+  const renderZoom = zoom / 100;
+  const virtualViewport = useMemo<WorldRect>(() => {
+    const overscan = VIRTUALIZATION_OVERSCAN_PX / renderZoom;
+    const viewportWidth = width > 0 ? width : INITIAL_VIEWPORT_WIDTH;
+    const viewportHeight = height > 0 ? height : INITIAL_VIEWPORT_HEIGHT;
+    return {
+      x: -panX / renderZoom - overscan,
+      y: -panY / renderZoom - overscan,
+      width: viewportWidth / renderZoom + overscan * 2,
+      height: viewportHeight / renderZoom + overscan * 2,
+    };
+  }, [height, panX, panY, renderZoom, width]);
+  const visibleRoot = useMemo(() => {
+    if (!page) return null;
+    return cullElementTree(page.root, virtualViewport, {
+      preserveIds: new Set(
+        dropTargetId
+          ? [...selectedIds, ...dragIds, dropTargetId]
+          : [...selectedIds, ...dragIds],
+      ),
+      forceSubtreeIds: new Set(dragIds),
+    });
+  }, [dragIds, dropTargetId, page, selectedIds, virtualViewport]);
+
   const previousSelectedIds = useRef<readonly string[]>([]);
   useLayoutEffect(() => {
     const next = new Set(selectedIds);
@@ -171,7 +199,7 @@ export default function Canvas() {
       renderedElement(id)?.classList.add("selected");
     }
     previousSelectedIds.current = selectedIds;
-  }, [selectedIds, page]);
+  }, [selectedIds, visibleRoot]);
 
   const previousDropTargetId = useRef<string | null>(null);
   useLayoutEffect(() => {
@@ -186,7 +214,7 @@ export default function Canvas() {
       }
       previousDropTargetId.current = dropTargetId;
     }
-  }, [dropTargetId, page]);
+  }, [dropTargetId, visibleRoot]);
 
   const previousDragIds = useRef<readonly string[]>([]);
   useLayoutEffect(() => {
@@ -213,7 +241,7 @@ export default function Canvas() {
       element.style.transform = `translate(${dragOffset.dx}px, ${dragOffset.dy}px)${rotation}`;
     }
     previousDragIds.current = dragIds;
-  }, [dragIds, dragOffset, page]);
+  }, [dragIds, dragOffset, visibleRoot]);
 
   // Track the space key for drag-to-pan.
   useEffect(() => {
@@ -594,12 +622,18 @@ export default function Canvas() {
           const wy0 = (rectScreen.top - store.panY) / z;
           const wx1 = (rectScreen.left + rectScreen.width - store.panX) / z;
           const wy1 = (rectScreen.top + rectScreen.height - store.panY) / z;
-          const hits = collectElementRects(store.project, store.activePageId)
-            .filter(
-              (r) =>
-                r.x < wx1 && r.x + r.w > wx0 && r.y < wy1 && r.y + r.h > wy0,
-            )
-            .map((r) => r.id);
+          const index = getProjectSpatialIndex(
+            store.project,
+            store.activePageId,
+          );
+          const hits = index
+            ? queryElementRects(index, {
+                x: wx0,
+                y: wy0,
+                width: wx1 - wx0,
+                height: wy1 - wy0,
+              }).map((r) => r.id)
+            : [];
           store.selectMany(hits, mq.additive);
         }
         return;
@@ -758,7 +792,7 @@ export default function Canvas() {
           }}
         />
 
-        {page ? (
+        {visibleRoot ? (
           <div
             className="canvas-viewport"
             style={{ transform: `translate(${panX}px, ${panY}px) scale(${z})` }}
@@ -769,7 +803,7 @@ export default function Canvas() {
             >
               <CanvasRenderContext.Provider value={renderContext}>
                 <ElementRenderer
-                  node={page.root}
+                  node={visibleRoot}
                   isRoot
                   frameMinHeight={FRAME_MIN_HEIGHT}
                 />
