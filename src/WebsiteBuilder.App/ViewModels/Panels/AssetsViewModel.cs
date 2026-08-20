@@ -125,7 +125,7 @@ public sealed partial class AssetsViewModel : ToolViewModel
 
         if (imported > 0)
         {
-            _projects.ApplyEditorUpdate(project);
+            _projects.ApplyHostUpdate(project);
         }
 
         Refresh();
@@ -156,7 +156,7 @@ public sealed partial class AssetsViewModel : ToolViewModel
             return;
         }
 
-        _projects.ApplyEditorUpdate(project);
+        _projects.ApplyHostUpdate(project);
         Refresh();
         Status = $"Deleted {item.Name}.";
     }

@@ -9,6 +9,34 @@ export interface HostInfo {
   platform: string;
 }
 
+interface ProjectSyncEnvelope {
+  project: Project;
+  revision: number;
+}
+
+interface ProjectUpdateResponse {
+  accepted: boolean;
+  revision: number;
+  project?: Project | null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function readProjectEnvelope(value: unknown): ProjectSyncEnvelope | null {
+  if (!isRecord(value) || !Number.isSafeInteger(value.revision) || !isRecord(value.project)) {
+    return null;
+  }
+
+  const project = value.project as Partial<Project>;
+  if (!Array.isArray(project.pages) || !Array.isArray(project.breakpoints) || !Array.isArray(project.assets)) {
+    return null;
+  }
+
+  return { project: project as Project, revision: value.revision as number };
+}
+
 let connected = false;
 
 /**
@@ -32,7 +60,10 @@ export async function connectHost(): Promise<HostInfo | null> {
 
   // Host → editor events.
   bridge.on("project.load", (payload) => {
-    useEditorStore.getState().setProject(payload as Project);
+    const snapshot = readProjectEnvelope(payload);
+    if (snapshot) {
+      useEditorStore.getState().setProject(snapshot.project, snapshot.revision);
+    }
   });
   bridge.on("editor.setZoom", (payload) => {
     const zoom = (payload as { zoom?: number })?.zoom;
@@ -230,12 +261,50 @@ export async function connectHost(): Promise<HostInfo | null> {
     sb.setStyle("hero-heading", "font-size", "40px");
   });
 
-  // Push editor-originated model edits back to the host so the project model
-  // stays authoritative. Gated on `revision`, which host-pushed loads never bump.
-  // Debounced so live resize/drag don't flood the bridge — the final state always
-  // wins via the trailing call.
+  // Push editor-originated model edits through a revision-checked host request.
+  // This prevents a stale full-project snapshot from silently overwriting a
+  // host-originated asset mutation. Only one update is in flight at a time.
   let lastRevision = store.revision;
   let pushTimer: ReturnType<typeof setTimeout> | null = null;
+  let pushInFlight = false;
+  let pushAgain = false;
+
+  const pushProject = async (): Promise<void> => {
+    if (pushInFlight) {
+      pushAgain = true;
+      return;
+    }
+
+    const state = useEditorStore.getState();
+    if (!state.project || !bridge.isHosted) {
+      return;
+    }
+
+    pushInFlight = true;
+    const sentRevision = state.revision;
+    try {
+      const response = await bridge.invoke<ProjectUpdateResponse>("host.applyProjectUpdate", {
+        baseRevision: state.hostRevision,
+        project: state.project,
+      });
+      if (response.accepted) {
+        useEditorStore.getState().acknowledgeHostRevision(response.revision);
+      } else if (response.project) {
+        useEditorStore.getState().setProject(response.project, response.revision);
+      }
+    } catch {
+      // Keep the local edit in memory. A later mutation will retry; the host
+      // revision check prevents this snapshot from being accepted if now stale.
+    } finally {
+      pushInFlight = false;
+      const changedWhileSending = useEditorStore.getState().revision !== sentRevision;
+      if (pushAgain || changedWhileSending) {
+        pushAgain = false;
+        void pushProject();
+      }
+    }
+  };
+
   useEditorStore.subscribe((state) => {
     if (state.revision !== lastRevision) {
       lastRevision = state.revision;
@@ -243,10 +312,7 @@ export async function connectHost(): Promise<HostInfo | null> {
         clearTimeout(pushTimer);
       }
       pushTimer = setTimeout(() => {
-        const project = useEditorStore.getState().project;
-        if (project) {
-          bridge.publish("editor.projectChanged", project);
-        }
+        void pushProject();
       }, 90);
     }
   });
@@ -320,9 +386,9 @@ export async function connectHost(): Promise<HostInfo | null> {
   bridge.publish("editor.ready", { editor: "WebsiteBuilder", version: "0.1.0" });
 
   // The host's request handler returns the project as a JSON object payload.
-  const project = await bridge.invoke<Project | null>("host.getProject");
-  if (project) {
-    useEditorStore.getState().setProject(project);
+  const snapshot = readProjectEnvelope(await bridge.invoke<unknown>("host.getProject"));
+  if (snapshot) {
+    useEditorStore.getState().setProject(snapshot.project, snapshot.revision);
   }
 
   return bridge.invoke<HostInfo>("host.getInfo");

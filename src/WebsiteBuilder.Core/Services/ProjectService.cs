@@ -25,12 +25,16 @@ public sealed class ProjectService : IProjectService
     private Project? _current;
     private string? _currentPath;
     private bool _isDirty;
+    private long _revision;
 
     /// <inheritdoc />
     public Project? Current => _current;
 
     /// <inheritdoc />
     public bool IsDirty => _isDirty;
+
+    /// <inheritdoc />
+    public long Revision => _revision;
 
     /// <inheritdoc />
     public event EventHandler? DirtyChanged;
@@ -47,6 +51,9 @@ public sealed class ProjectService : IProjectService
 
     /// <inheritdoc />
     public event EventHandler<Project>? Mutated;
+
+    /// <inheritdoc />
+    public event EventHandler<Project>? HostMutated;
 
     /// <inheritdoc />
     public Project New(string name = "Untitled Project")
@@ -139,14 +146,44 @@ public sealed class ProjectService : IProjectService
         ArgumentNullException.ThrowIfNull(project);
 
         _current = project;
+        _revision++;
         SetDirty(true);
         Mutated?.Invoke(this, project);
+    }
+
+    /// <inheritdoc />
+    public bool TryApplyEditorUpdate(Project project, long expectedRevision, out long revision)
+    {
+        ArgumentNullException.ThrowIfNull(project);
+
+        if (expectedRevision != _revision)
+        {
+            revision = _revision;
+            return false;
+        }
+
+        ApplyEditorUpdate(project);
+        revision = _revision;
+        return true;
+    }
+
+    /// <inheritdoc />
+    public void ApplyHostUpdate(Project project)
+    {
+        ArgumentNullException.ThrowIfNull(project);
+
+        _current = project;
+        _revision++;
+        SetDirty(true);
+        Mutated?.Invoke(this, project);
+        HostMutated?.Invoke(this, project);
     }
 
     private void SetCurrent(Project project, string? path)
     {
         _current = project;
         _currentPath = path;
+        _revision++;
         SetDirty(false);
         CurrentChanged?.Invoke(this, project);
     }

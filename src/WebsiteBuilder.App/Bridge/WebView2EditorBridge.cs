@@ -15,18 +15,28 @@ namespace WebsiteBuilder.App.Bridge;
 /// </summary>
 public sealed class WebView2EditorBridge : IEditorBridge, IDisposable
 {
+    private const int MaxMessageCharacters = 16 * 1024 * 1024;
+    private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(15);
+
     private readonly CoreWebView2 _core;
     private readonly Dispatcher _dispatcher;
     private readonly JsonSerializerOptions _json;
+    private readonly string _allowedOrigin;
+    private readonly CancellationTokenSource _disposeCts = new();
 
     private readonly ConcurrentDictionary<string, TaskCompletionSource<BridgeMessage>> _pending = new();
     private readonly ConcurrentDictionary<string, EditorRequestHandler> _handlers = new();
 
-    public WebView2EditorBridge(CoreWebView2 core, Dispatcher dispatcher, JsonSerializerOptions json)
+    public WebView2EditorBridge(
+        CoreWebView2 core,
+        Dispatcher dispatcher,
+        JsonSerializerOptions json,
+        string allowedOrigin)
     {
         _core = core;
         _dispatcher = dispatcher;
         _json = json;
+        _allowedOrigin = allowedOrigin.TrimEnd('/');
         _core.WebMessageReceived += OnWebMessageReceived;
     }
 
@@ -56,17 +66,27 @@ public sealed class WebView2EditorBridge : IEditorBridge, IDisposable
         var tcs = new TaskCompletionSource<BridgeMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
         _pending[id] = tcs;
 
-        await using var registration = cancellationToken.CanBeCanceled
-            ? cancellationToken.Register(() =>
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken,
+            _disposeCts.Token);
+        timeoutCts.CancelAfter(RequestTimeout);
+        using var registration = timeoutCts.Token.Register(() =>
+        {
+            if (_pending.TryRemove(id, out var pending))
             {
-                if (_pending.TryRemove(id, out var pending))
-                {
-                    pending.TrySetCanceled(cancellationToken);
-                }
-            })
-            : default;
+                pending.TrySetCanceled(timeoutCts.Token);
+            }
+        });
 
-        await PostAsync(message).ConfigureAwait(false);
+        try
+        {
+            await PostAsync(message, timeoutCts.Token).ConfigureAwait(false);
+        }
+        catch
+        {
+            _pending.TryRemove(id, out _);
+            throw;
+        }
 
         var response = await tcs.Task.ConfigureAwait(false);
         if (response.Error is not null)
@@ -88,11 +108,13 @@ public sealed class WebView2EditorBridge : IEditorBridge, IDisposable
             Payload = JsonSerializer.SerializeToElement(payload, _json),
         };
 
-        return PostAsync(message);
+        cancellationToken.ThrowIfCancellationRequested();
+        return PostAsync(message, cancellationToken);
     }
 
-    private Task PostAsync(BridgeMessage message)
+    private Task PostAsync(BridgeMessage message, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var json = JsonSerializer.Serialize(message, _json);
 
         if (_dispatcher.CheckAccess())
@@ -101,11 +123,19 @@ public sealed class WebView2EditorBridge : IEditorBridge, IDisposable
             return Task.CompletedTask;
         }
 
-        return _dispatcher.InvokeAsync(() => _core.PostWebMessageAsJson(json)).Task;
+        return _dispatcher
+            .InvokeAsync(() => _core.PostWebMessageAsJson(json))
+            .Task
+            .WaitAsync(cancellationToken);
     }
 
     private async void OnWebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
     {
+        if (!IsAllowedSource(e.Source) || e.WebMessageAsJson.Length > MaxMessageCharacters)
+        {
+            return;
+        }
+
         BridgeMessage? message;
         try
         {
@@ -121,24 +151,45 @@ public sealed class WebView2EditorBridge : IEditorBridge, IDisposable
             return;
         }
 
-        switch (message.Type)
+        try
         {
-            case BridgeMessageType.Response:
-                if (_pending.TryRemove(message.Id, out var tcs))
-                {
-                    tcs.TrySetResult(message);
-                }
+            switch (message.Type)
+            {
+                case BridgeMessageType.Response:
+                    if (_pending.TryRemove(message.Id, out var tcs))
+                    {
+                        tcs.TrySetResult(message);
+                    }
 
-                break;
+                    break;
 
-            case BridgeMessageType.Event:
-                EventReceived?.Invoke(this, new BridgeEventArgs(message.Method, message.Payload?.GetRawText()));
-                break;
+                case BridgeMessageType.Event:
+                    EventReceived?.Invoke(this, new BridgeEventArgs(message.Method, message.Payload?.GetRawText()));
+                    break;
 
-            case BridgeMessageType.Request:
-                await HandleEditorRequestAsync(message).ConfigureAwait(false);
-                break;
+                case BridgeMessageType.Request:
+                    await HandleEditorRequestAsync(message).ConfigureAwait(false);
+                    break;
+            }
         }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            // Never let an exception escape this async-void WebView2 callback.
+            // Request handlers return their own sanitized error response.
+        }
+    }
+
+    private bool IsAllowedSource(string source)
+    {
+        if (!Uri.TryCreate(source, UriKind.Absolute, out var uri))
+        {
+            return false;
+        }
+
+        return string.Equals(
+            uri.GetLeftPart(UriPartial.Authority).TrimEnd('/'),
+            _allowedOrigin,
+            StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task HandleEditorRequestAsync(BridgeMessage request)
@@ -162,7 +213,7 @@ public sealed class WebView2EditorBridge : IEditorBridge, IDisposable
             }
             catch (Exception ex)
             {
-                response = ErrorResponse(request, "handler_error", ex.Message);
+                response = ErrorResponse(request, "handler_error", "The host could not process the request.");
             }
         }
         else
@@ -170,7 +221,7 @@ public sealed class WebView2EditorBridge : IEditorBridge, IDisposable
             response = ErrorResponse(request, "not_found", $"No host handler registered for '{request.Method}'.");
         }
 
-        await PostAsync(response).ConfigureAwait(false);
+        await PostAsync(response, _disposeCts.Token).ConfigureAwait(false);
     }
 
     private static BridgeMessage ErrorResponse(BridgeMessage request, string code, string message) => new()
@@ -192,5 +243,16 @@ public sealed class WebView2EditorBridge : IEditorBridge, IDisposable
         return payload.Value.Deserialize<TResponse>(_json)!;
     }
 
-    public void Dispose() => _core.WebMessageReceived -= OnWebMessageReceived;
+    public void Dispose()
+    {
+        _core.WebMessageReceived -= OnWebMessageReceived;
+        _disposeCts.Cancel();
+        foreach (var (_, pending) in _pending)
+        {
+            pending.TrySetCanceled(_disposeCts.Token);
+        }
+
+        _pending.Clear();
+        _disposeCts.Dispose();
+    }
 }

@@ -201,8 +201,12 @@ interface EditorState {
    */
   revision: number;
 
+  /** Last authoritative host revision this editor snapshot is based on. */
+  hostRevision: number;
+
   setReady: (ready: boolean) => void;
-  setProject: (project: Project) => void;
+  setProject: (project: Project, hostRevision?: number) => void;
+  acknowledgeHostRevision: (hostRevision: number) => void;
   setActivePage: (pageId: string) => void;
   setBreakpoint: (breakpointId: string) => void;
   setZoom: (zoom: number) => void;
@@ -286,21 +290,31 @@ export const useEditorStore = create<EditorState>((set) => ({
   panY: 80,
   canvasBackground: loadCanvasBackground(),
   revision: 0,
+  hostRevision: 0,
 
   setReady: (ready) => set({ ready }),
 
-  setProject: (project) =>
-    set(() => {
+  setProject: (project, hostRevision = 0) =>
+    set((state) => {
       const firstPage: Page | undefined = project.pages[0];
       const base: BreakpointDef | undefined =
         project.breakpoints.find((b) => b.isBase) ?? project.breakpoints[0];
+      const activePage = project.pages.some((page) => page.id === state.activePageId)
+        ? state.activePageId
+        : firstPage?.id ?? null;
+      const activeBreakpoint = project.breakpoints.some((bp) => bp.id === state.breakpointId)
+        ? state.breakpointId
+        : base?.id ?? null;
       return {
         project,
-        activePageId: firstPage ? firstPage.id : null,
-        breakpointId: base ? base.id : null,
-        selectedIds: [],
+        hostRevision,
+        activePageId: activePage,
+        breakpointId: activeBreakpoint,
+        selectedIds: state.selectedIds.filter((id) => findNode(project, id) !== null),
       };
     }),
+
+  acknowledgeHostRevision: (hostRevision) => set({ hostRevision }),
 
   setActivePage: (pageId) => set({ activePageId: pageId }),
   setBreakpoint: (breakpointId) => set({ breakpointId }),

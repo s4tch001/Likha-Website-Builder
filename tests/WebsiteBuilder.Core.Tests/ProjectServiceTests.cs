@@ -81,6 +81,43 @@ public class ProjectServiceTests
     }
 
     [Fact]
+    public void TryApplyEditorUpdate_RejectsStaleSnapshot()
+    {
+        var service = new ProjectService();
+        var project = service.New("Revisioned");
+        var initialRevision = service.Revision;
+
+        service.ApplyHostUpdate(project);
+        var authoritativeRevision = service.Revision;
+
+        var accepted = service.TryApplyEditorUpdate(
+            Project.CreateDefault("Stale"),
+            initialRevision,
+            out var returnedRevision);
+
+        Assert.False(accepted);
+        Assert.Equal(authoritativeRevision, returnedRevision);
+        Assert.Same(project, service.Current);
+        Assert.Equal("Revisioned", service.Current!.Name);
+    }
+
+    [Fact]
+    public void ApplyHostUpdate_RaisesHostMutationAndAdvancesRevision()
+    {
+        var service = new ProjectService();
+        var project = service.New();
+        var before = service.Revision;
+        Project? published = null;
+        service.HostMutated += (_, value) => published = value;
+
+        service.ApplyHostUpdate(project);
+
+        Assert.Equal(before + 1, service.Revision);
+        Assert.Same(project, published);
+        Assert.True(service.IsDirty);
+    }
+
+    [Fact]
     public async Task Save_ClearsDirtyFlag()
     {
         var service = new ProjectService();

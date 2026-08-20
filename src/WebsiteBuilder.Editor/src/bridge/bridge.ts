@@ -8,6 +8,22 @@ import type {
 interface PendingRequest {
   resolve: (value: unknown) => void;
   reject: (reason: unknown) => void;
+  timeoutId: ReturnType<typeof setTimeout>;
+}
+
+const REQUEST_TIMEOUT_MS = 15_000;
+
+function isBridgeMessage(value: unknown): value is BridgeMessage {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const message = value as Partial<BridgeMessage>;
+  return (
+    typeof message.id === "string" &&
+    typeof message.method === "string" &&
+    (message.type === "Request" || message.type === "Response" || message.type === "Event")
+  );
 }
 
 /**
@@ -31,7 +47,9 @@ class EditorBridge {
   constructor() {
     this.host = typeof window === "undefined" ? undefined : window.chrome?.webview;
     this.host?.addEventListener("message", (event) => {
-      void this.onMessage(event.data as BridgeMessage);
+      if (isBridgeMessage(event.data)) {
+        void this.onMessage(event.data);
+      }
     });
   }
 
@@ -50,11 +68,23 @@ class EditorBridge {
     const message: BridgeMessage = { id, type: "Request", method, payload };
 
     return new Promise<TResponse>((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        if (this.pending.delete(id)) {
+          reject(new Error(`Bridge request '${method}' timed out.`));
+        }
+      }, REQUEST_TIMEOUT_MS);
       this.pending.set(id, {
         resolve: (value) => resolve(value as TResponse),
         reject,
+        timeoutId,
       });
-      this.post(message);
+      try {
+        this.post(message);
+      } catch (error) {
+        clearTimeout(timeoutId);
+        this.pending.delete(id);
+        reject(error);
+      }
     });
   }
 
@@ -93,6 +123,7 @@ class EditorBridge {
         const pending = this.pending.get(message.id);
         if (pending) {
           this.pending.delete(message.id);
+          clearTimeout(pending.timeoutId);
           if (message.error) {
             pending.reject(new Error(message.error.message));
           } else {

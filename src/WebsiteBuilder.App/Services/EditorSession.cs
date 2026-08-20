@@ -43,8 +43,10 @@ public sealed class EditorSession
             ?? configuration.GetValue("Editor:DevServerUrl", "http://127.0.0.1:3000")
             ?? "http://127.0.0.1:3000";
 
-        // Push the project into the editor whenever it is replaced (new/open).
+        // Push replacements and host-originated mutations into the editor. Editor
+        // mutations deliberately do not raise HostMutated, preventing echo loops.
         _projects.CurrentChanged += (_, _) => PublishProject();
+        _projects.HostMutated += (_, _) => PublishProject();
     }
 
     /// <summary>Raised when the editor reports a viewport zoom change (percent).</summary>
@@ -127,10 +129,6 @@ public sealed class EditorSession
             };
             core.NewWindowRequested += (_, args) => args.Handled = true;
 
-            _bridge = new WebView2EditorBridge(core, webView.Dispatcher, ProjectSerializer.Options);
-            _bridge.EventReceived += OnEditorEvent;
-            RegisterHostHandlers(_bridge);
-
             string url;
             if (_useDevServer)
             {
@@ -149,6 +147,15 @@ public sealed class EditorSession
                     VirtualHost, wwwroot, CoreWebView2HostResourceAccessKind.Allow);
                 url = $"https://{VirtualHost}/index.html";
             }
+
+            var allowedOrigin = new Uri(url).GetLeftPart(UriPartial.Authority);
+            _bridge = new WebView2EditorBridge(
+                core,
+                webView.Dispatcher,
+                ProjectSerializer.Options,
+                allowedOrigin);
+            _bridge.EventReceived += OnEditorEvent;
+            RegisterHostHandlers(_bridge);
 
             SetStatus($"Loading editor: {url}");
             core.Navigate(url);
@@ -187,11 +194,40 @@ public sealed class EditorSession
             return Task.FromResult<string?>(JsonSerializer.Serialize(info, ProjectSerializer.Options));
         });
 
-        // editor → host request: returns the current project as canonical JSON.
+        // editor → host request: returns the authoritative project plus its
+        // in-memory revision for optimistic concurrency checks.
         bridge.RegisterHandler("host.getProject", (_, _) =>
         {
-            var json = _projects.Current is null ? null : ProjectSerializer.Serialize(_projects.Current);
+            var snapshot = _projects.Current is null
+                ? null
+                : new ProjectSyncEnvelope(_projects.Current, _projects.Revision);
+            var json = snapshot is null
+                ? null
+                : JsonSerializer.Serialize(snapshot, ProjectSerializer.Options);
             return Task.FromResult(json);
+        });
+
+        // Editor snapshots are accepted only when based on the current host
+        // revision. A conflict returns the authoritative model for resync.
+        bridge.RegisterHandler("host.applyProjectUpdate", (payloadJson, _) =>
+        {
+            if (string.IsNullOrWhiteSpace(payloadJson))
+            {
+                throw new InvalidDataException("Project update payload is missing.");
+            }
+
+            var request = JsonSerializer.Deserialize<ProjectUpdateRequest>(payloadJson, ProjectSerializer.Options)
+                ?? throw new InvalidDataException("Project update payload is invalid.");
+            var accepted = _projects.TryApplyEditorUpdate(
+                request.Project,
+                request.BaseRevision,
+                out var revision);
+
+            var response = new ProjectUpdateResponse(
+                accepted,
+                revision,
+                accepted ? null : _projects.Current);
+            return Task.FromResult<string?>(JsonSerializer.Serialize(response, ProjectSerializer.Options));
         });
     }
 
@@ -478,7 +514,8 @@ public sealed class EditorSession
             return;
         }
 
-        var element = JsonSerializer.SerializeToElement(_projects.Current, ProjectSerializer.Options);
+        var snapshot = new ProjectSyncEnvelope(_projects.Current, _projects.Revision);
+        var element = JsonSerializer.SerializeToElement(snapshot, ProjectSerializer.Options);
         _ = _bridge.PublishAsync("project.load", element);
     }
 
@@ -514,3 +551,9 @@ public sealed class EditorSession
         StatusChanged?.Invoke(this, status);
     }
 }
+
+internal sealed record ProjectSyncEnvelope(Project Project, long Revision);
+
+internal sealed record ProjectUpdateRequest(long BaseRevision, Project Project);
+
+internal sealed record ProjectUpdateResponse(bool Accepted, long Revision, Project? Project);
