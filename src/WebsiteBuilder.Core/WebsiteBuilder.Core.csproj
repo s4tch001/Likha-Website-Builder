@@ -6,7 +6,7 @@
     unit-testable and reusable by CodeGen, the Bridge and the App.
   -->
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
 
 </Project>

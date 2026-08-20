@@ -14,9 +14,10 @@ namespace WebsiteBuilder.CodeGen;
 /// </summary>
 public sealed class ReactCodeGenerator : ICodeGenerator
 {
-    public const string NextVersion = "16.3.0";
+    public const string NextVersion = "16.3.1";
     public const string ReactVersion = "19.2.8";
     public const string TypeScriptVersion = "7.0.2";
+    public const string TypeScriptApiVersion = "6.0.3";
 
     private const string TransparentImage =
         "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
@@ -108,7 +109,8 @@ public sealed class ReactCodeGenerator : ICodeGenerator
         "    \"@types/node\": \"26.2.0\",\n" +
         "    \"@types/react\": \"19.2.18\",\n" +
         "    \"@types/react-dom\": \"19.2.4\",\n" +
-        $"    \"typescript\": \"{TypeScriptVersion}\"\n" +
+        $"    \"@typescript/native\": \"npm:typescript@{TypeScriptVersion}\",\n" +
+        $"    \"typescript\": \"npm:@typescript/typescript6@{TypeScriptApiVersion}\"\n" +
         "  },\n" +
         "  \"engines\": {\n" +
         "    \"node\": \">=20.9.0\"\n" +

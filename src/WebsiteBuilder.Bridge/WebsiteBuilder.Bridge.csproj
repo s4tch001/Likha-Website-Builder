@@ -7,7 +7,7 @@
     lets Core/CodeGen and tests reference it without a WebView2 dependency.
   -->
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>

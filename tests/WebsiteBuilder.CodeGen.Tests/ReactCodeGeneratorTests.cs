@@ -66,7 +66,12 @@ public class ReactCodeGeneratorTests
         Assert.Contains($"\"next\": \"{ReactCodeGenerator.NextVersion}\"", packageJson);
         Assert.Contains($"\"react\": \"{ReactCodeGenerator.ReactVersion}\"", packageJson);
         Assert.Contains($"\"react-dom\": \"{ReactCodeGenerator.ReactVersion}\"", packageJson);
-        Assert.Contains($"\"typescript\": \"{ReactCodeGenerator.TypeScriptVersion}\"", packageJson);
+        Assert.Contains(
+            $"\"@typescript/native\": \"npm:typescript@{ReactCodeGenerator.TypeScriptVersion}\"",
+            packageJson);
+        Assert.Contains(
+            $"\"typescript\": \"npm:@typescript/typescript6@{ReactCodeGenerator.TypeScriptApiVersion}\"",
+            packageJson);
         Assert.Contains("\"typecheck\": \"next typegen && tsc --noEmit\"", packageJson);
         Assert.Contains("\"node\": \">=20.9.0\"", packageJson);
         Assert.DoesNotContain("vite", packageJson, StringComparison.OrdinalIgnoreCase);

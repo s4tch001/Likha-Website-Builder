@@ -6,6 +6,8 @@ obj/
 *.suo
 *.cache
 artifacts/
+.dotnet-sdk/
+.dotnet-install.ps1
 [Dd]ebug/
 [Rr]elease/
 TestResults/

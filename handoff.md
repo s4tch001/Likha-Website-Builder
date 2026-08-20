@@ -11,8 +11,8 @@
 **Likha - Website Builder** — a professional Windows desktop **visual website
 builder** (Webflow/Framer-class). Locked stack:
 
-- **Host:** C# / .NET 8 / **WPF** (Windows-only), hosting the editor in **WebView2**.
-- **Editor:** **Next.js 16.3.0 App Router + React 19.2.8 + TypeScript 7.0.2 + Zustand**,
+- **Host:** C# / .NET 10 LTS / **WPF** (Windows-only), hosting the editor in **WebView2**.
+- **Editor:** **Next.js 16.3.1 App Router + React 19.2.8 + TypeScript 7.0.2 + Zustand 4.5.7**,
   statically exported and loaded inside WebView2.
 - **Model:** a canonical **Project JSON** is the single source of truth. The editor
   mutates it; code generators (later phases) emit **clean HTML5/CSS3/JS and React**
@@ -39,14 +39,14 @@ The user often writes in **Filipino/Tagalog**; reply in kind.
 ```
 WebsiteBuilder.sln
 ├── src/
-│   ├── WebsiteBuilder.App        WPF shell (net8.0-windows). AssemblyName=WebsiteBuilder (exe is WebsiteBuilder.exe — INTERNAL name kept; display name is "Likha - Website Builder")
+│   ├── WebsiteBuilder.App        WPF shell (net10.0-windows). AssemblyName=WebsiteBuilder (exe is WebsiteBuilder.exe — INTERNAL name kept; display name is "Likha - Website Builder")
 │   ├── WebsiteBuilder.Core       Domain model (Project/Page/ElementNode/Breakpoint), services, ProjectSerializer. No UI deps.
 │   ├── WebsiteBuilder.Bridge     JSON-RPC contract: IEditorBridge, BridgeMessage{id,type,method,payload,error}
 │   ├── WebsiteBuilder.CodeGen    ICodeGenerator + working static HTML and React emitters
 │   └── WebsiteBuilder.Editor     Next.js/React/TS/Zustand editor. Static export → ../WebsiteBuilder.App/wwwroot
 └── tests/
-    ├── WebsiteBuilder.Core.Tests      (xUnit) 30 tests
-    └── WebsiteBuilder.CodeGen.Tests   (xUnit) 20 tests
+    ├── WebsiteBuilder.Core.Tests      (xUnit) 42 tests
+    └── WebsiteBuilder.CodeGen.Tests   (xUnit) 27 tests
 ```
 
 Editor entry/config (`src/WebsiteBuilder.Editor/`):
@@ -71,30 +71,35 @@ Editor source (`src/WebsiteBuilder.Editor/src/`):
 
 ## 2. Build / run / test (IMPORTANT — read the gotchas)
 
-`dotnet` is **not on this shell's PATH**. Use the full path:
+`global.json` requires .NET 10 (`10.0.100`, `latestFeature`). This workspace has the
+current SDK 10.0.400 in a project-local, ignored directory; use:
 ```
-"C:\Program Files\dotnet\dotnet.exe"
+.\.dotnet-sdk\dotnet.exe
 ```
-.NET 8 SDK 8.0.422 is installed. Node 24 + npm. WebView2 Runtime 146 present.
+The machine-wide SDK is still .NET 8, so plain `dotnet` will not satisfy `global.json`
+until .NET 10 is installed system-wide. Node 24 + npm and WebView2 Runtime 146 are present.
 
 ### Build & test
 ```sh
 # Editor (from src/WebsiteBuilder.Editor):
-npm install            # first time
+npm ci                 # exact, audited lockfile install
 npm run build          # next build (static export) → copies out/ to ../WebsiteBuilder.App/wwwroot
-npm run typecheck      # tsc --noEmit
-npm test               # vitest run (currently 26 tests pass)
+npm run format:check   # Prettier gate
+npm run lint           # ESLint + Next/React rules
+npm run typecheck      # TS 7 native `tsc --noEmit`
+npm run test:coverage  # 36 tests + enforced coverage floor
 
 # C# (from repo root):
-"C:\Program Files\dotnet\dotnet.exe" build WebsiteBuilder.sln
-"C:\Program Files\dotnet\dotnet.exe" test  WebsiteBuilder.sln   # 50 tests pass
-"C:\Program Files\dotnet\dotnet.exe" run --project src/WebsiteBuilder.App
+.\.dotnet-sdk\dotnet.exe restore WebsiteBuilder.sln
+.\.dotnet-sdk\dotnet.exe build WebsiteBuilder.sln -c Release --no-restore
+.\.dotnet-sdk\dotnet.exe test WebsiteBuilder.sln -c Release --no-restore  # 69 tests
+.\.dotnet-sdk\dotnet.exe run --project src/WebsiteBuilder.App
 ```
 
 ### 🔴 CRITICAL GOTCHA: after editing the React editor, you MUST `dotnet build` the App
 `npm run build` creates a Next.js static export in `out/`, then the guarded copy script
 replaces the **source** `wwwroot/`. The running exe loads its **own
-copy** in `bin/Debug/net8.0-windows/wwwroot/`, copied by MSBuild (Content,
+copy** in `bin/Debug/net10.0-windows/wwwroot/`, copied by MSBuild (Content,
 PreserveNewest) only during `dotnet build`. So the sequence is always:
 `npm run build` (editor) → `dotnet build` (app) → run the exe. Running the exe after
 only `npm run build` uses a STALE editor bundle. (This bit us once.)
@@ -115,15 +120,22 @@ Symmetric JSON-RPC. Both sides send `BridgeMessage{ id, type:"Request"|"Response
 - TS: `bridge.ts` mirror (`invoke`/`publish`/`handle`/`on`).
 
 ### Data-flow rules (CRITICAL to keep consistent)
-- Editor mutations bump a `revision` counter → `hostBridge` pushes
-  `editor.projectChanged` (debounced 90ms) → host `IProjectService.ApplyEditorUpdate`
-  raises **`Mutated`** (NOT `CurrentChanged`) so it is NOT echoed back to the editor.
+- The host owns the authoritative monotonic revision. `host.getProject` and `project.load`
+  carry `{project, revision}`. Editor mutations are serialized and sent through
+  `host.applyProjectUpdate {baseRevision, project}`; `TryApplyEditorUpdate` accepts only
+  the exact current revision. On conflict the host snapshot replaces the stale editor copy.
+- Host-originated mutations use `ApplyHostUpdate`, increment the revision, raise `Mutated`
+  for persistence/panels and `HostMutated` for `project.load`. Editor-originated accepted
+  snapshots deliberately do not raise `HostMutated`, preventing echo loops. Do not restore
+  the removed legacy full-project event path because it bypasses conflict protection.
 - Selection: editor publishes `editor.selectionChanged {ids, element}` →
   `EditorSession.SelectionChanged` → Property Inspector loads it.
 - Host→editor edits (e.g. Property Inspector): `editor.setStyle/setGeometry/setRotation/
   setText/insertElement/deleteSelected/duplicateSelected/align/setZoom/setBreakpoint`.
 - Host handler string-returns are PARSED to JS objects by the C# bridge (so
   `host.getProject` resolves to a project OBJECT on the TS side, not a string).
+- Both bridge directions enforce a 15-second timeout and pending-request cleanup. The C#
+  transport also enforces the trusted WebView origin and a 16 MiB message ceiling.
 
 ### Debug / verification helpers (use these to verify headlessly)
 - Env `WB_SELFTEST=1` → after the handshake, `EditorSession` publishes `editor.runSelfTest`;
@@ -180,7 +192,7 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
 
 ---
 
-## 5. ✅ DONE (Phases 1–12 + 13a + migrations M1–M3a; 0/0 build, 50 C# + 26 editor tests)
+## 5. ✅ DONE (Phases 1–12 + 13a + migrations M1–M3f; 0/0 build, 69 C# + 36 editor tests)
 
 - **Phase 1 — Scaffolding.** Solution, 5 src + 2 test projects, Project JSON model
   (ElementNode/Page/Project/Breakpoint), ProjectSerializer, and service interfaces.
@@ -242,6 +254,34 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
   and temporary backups, then captured the audited pre-hardening source as a baseline commit and
   annotated tag. No application behavior changed. A remote backup still needs a user-selected
   private Git host/repository before anything can be pushed externally.
+- **Migration M3b — authoritative state synchronization (2026-08-20).** Added host-owned
+  monotonic revisions, revision-checked editor updates, conflict recovery, serialized editor
+  pushes, and host→editor mutation publication. Asset imports/deletions can no longer be
+  overwritten by a stale editor snapshot. Hardened bridge origins, size/time limits, pending
+  cleanup, and failure handling; added focused revision and bridge integration tests.
+- **Migration M3c — durable persistence (2026-08-20).** Project/recovery writes now use
+  same-directory temporary files, disk flush, atomic replacement, and rolling backups. Saves
+  are serialized and only clear dirty state for the saved revision. New/Open/Close now have
+  Save/Discard/Cancel guards, startup recovery restore/discard handling, and Save As refuses
+  to overwrite another existing project folder silently.
+- **Migration M3d — validation/export containment (2026-08-20).** Added bounded runtime
+  project validation in C# and TypeScript, unique IDs/routes, finite geometry, depth/count/
+  size limits, safe attribute/URL/CSS policies, and validation on deserialize, bridge updates,
+  serialize, and code generation. Export paths are fully resolved and root-contained, writes
+  are atomic, nested-route asset references are correct, and responsive root CSS is page-scoped.
+- **Migration M3e — continuous quality gates (2026-08-20).** Added pinned ESLint 9 + Next
+  rules (ESLint 10 is not yet compatible with the transitive Next plugin), Prettier, TypeScript
+  native typecheck, Vitest/Coverlet coverage floors, bridge/host integration tests, Windows CI,
+  Dependabot, npm/NuGet vulnerability audits, and formatting gates. Coverage baseline: editor
+  65.24% statements/56.19% branches/73.4% functions/65.31% lines; Core 78.71% lines; CodeGen
+  85.31% lines.
+- **Migration M3f — .NET 10 and controlled maintenance (2026-08-20).** Retargeted all C#
+  projects to .NET 10 LTS and verified with SDK 10.0.400. Updated CommunityToolkit.Mvvm 8.4.2,
+  Microsoft.Extensions.Hosting 10.0.11, WebView2 1.0.4129.50, test SDK 18.9.0, xUnit 2.9.3,
+  runner 3.1.5, Next.js/editor and generated exports 16.3.1, and Vitest 4.1.11. The editor and
+  generated projects use `@typescript/native` 7.0.2 for the Go compiler plus the official
+  `typescript`→`@typescript/typescript6` 6.0.3 compatibility alias for compiler-API consumers;
+  `experimental.useTypeScriptCli` keeps Next on native TS7. Clean install/build/tests/audits pass.
 
 ### Standalone polish/fixes already done (user-requested)
 - App renamed to **"Likha - Website Builder"** + logo as exe/window/taskbar icon.
@@ -252,15 +292,9 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
 
 ---
 
-## 6. ⛔ NOT DONE — stabilization M3b–M3f, then Phases 13–17
+## 6. ⛔ NOT DONE — Phase 13b onward
 
 Deliver each split into sub-phases, one per turn.
-
-- **Migration M3 — stabilization audit follow-up (M3a complete).** Before continuing feature
-  work: M3b repairs authoritative host/editor state and the Phase 13a stale-asset overwrite;
-  M3c makes saves atomic and adds dirty/recovery safeguards; M3d adds project validation and
-  hardens HTML/CSS/export paths; M3e adds CI/lint/format/coverage/integration gates; M3f performs
-  controlled dependency maintenance and migrates the WPF solution from .NET 8 to .NET 10 LTS.
 
 - **Phase 13 — Asset manager (13a complete).** Remaining: 13b thumbnail/grid browser with
   category/search filtering and asset details; 13c drag image/SVG/video assets into the canvas
@@ -289,6 +323,12 @@ Deliver each split into sub-phases, one per turn.
 - SVG import intentionally rejects active content, animation, embedded/external references,
   and CSS URL references except local `url(#id)`. Raster/media/font parser vulnerabilities
   still depend on the patched OS/browser decoders; Phase 13 does not attempt file transcoding.
+- Controlled major-version deferrals: AvalonDock 5 needs a dedicated docking/layout migration;
+  Zustand 5 belongs with the Phase 16 state/performance work; ESLint 10 remains blocked by
+  `eslint-plugin-import`'s ESLint 9 peer range under `eslint-config-next`; xUnit VS runner 4 and
+  its analyzer-major change should be handled as a separate test-infrastructure migration.
+- The Git repository has no remote. Configure a user-selected private remote before pushing;
+  do not guess a host or repository URL.
 
 ---
 
@@ -300,7 +340,6 @@ rule). Today's date context in prior sessions was 2026-06; convert relative date
 
 ## 8. Suggested first action in the new session
 
-Start **Migration M3b — authoritative state repair**. Fix the Phase 13a stale-asset overwrite
-before adding the asset browser: host-originated mutations must reach the editor without echo
-loops, whole-project updates need revision/conflict protection, and the bridge behavior needs
-focused integration tests. Keep Phase 13b paused until M3b–M3f are complete.
+Start **Phase 13b — asset thumbnail/grid browser** only after the user explicitly asks to
+continue. M3b–M3f are complete; preserve their revision, validation, persistence, coverage,
+and dependency gates while adding category/search filtering and asset details.
