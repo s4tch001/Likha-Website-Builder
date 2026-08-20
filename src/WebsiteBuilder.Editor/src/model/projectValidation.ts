@@ -286,6 +286,13 @@ export function isValidProject(value: unknown): value is Project {
         return false;
       }
       elementIds.add(current.node.id);
+      if (
+        Object.keys(current.node.responsiveStyles).some(
+          (breakpointId) => !breakpointIds.has(breakpointId),
+        )
+      ) {
+        return false;
+      }
       for (const [name, entry] of Object.entries(current.node.attributes)) {
         if (
           (name === "src" || name === "href" || name === "poster") &&

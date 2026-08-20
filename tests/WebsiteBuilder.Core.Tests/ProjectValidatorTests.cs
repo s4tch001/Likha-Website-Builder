@@ -41,6 +41,15 @@ public sealed class ProjectValidatorTests
         Assert.Throws<ProjectValidationException>(() => ProjectValidator.ValidateAndThrow(project));
     }
 
+    [Fact]
+    public void ValidateAndThrow_RejectsUnknownResponsiveBreakpoint()
+    {
+        var project = Project.CreateDefault();
+        project.Pages[0].Root.ResponsiveStyles["ghost"] = new() { ["color"] = "red" };
+
+        Assert.Throws<ProjectValidationException>(() => ProjectValidator.ValidateAndThrow(project));
+    }
+
     [Theory]
     [InlineData("onclick", "alert(1)")]
     [InlineData("href", "javascript:alert(1)")]

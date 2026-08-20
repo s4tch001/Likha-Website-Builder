@@ -18,7 +18,7 @@ public sealed record ComponentItem(
     public string ToolTip => string.IsNullOrEmpty(Description) ? $"Click to add {DisplayName}" : Description;
     public string SearchText => Definition is null
         ? $"{DisplayName} {ElementType}"
-        : $"{DisplayName} {Description} {string.Join(' ', Definition.Tags)}";
+        : $"{DisplayName} {Description} {Definition.Category} {string.Join(' ', Definition.Tags)}";
 }
 
 /// <summary>A named group of toolbox items (e.g. "Layout", "Typography").</summary>

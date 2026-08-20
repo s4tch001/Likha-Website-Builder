@@ -64,4 +64,10 @@ describe("project validation", () => {
     expect(isSafeCssPropertyName("color};body{background")).toBe(false);
     expect(isSafeCssValue("red; background: black")).toBe(false);
   });
+
+  it("rejects responsive layers for unknown breakpoints", () => {
+    const value = project();
+    value.pages[0]!.root.responsiveStyles.ghost = { color: "red" };
+    expect(isValidProject(value)).toBe(false);
+  });
 });

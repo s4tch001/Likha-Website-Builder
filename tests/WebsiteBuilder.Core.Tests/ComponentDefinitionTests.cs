@@ -12,6 +12,10 @@ public sealed class ComponentDefinitionTests
     {
         var definitions = BuiltInComponentLibrary.All;
         Assert.NotEmpty(definitions);
+        Assert.Contains(definitions, definition => definition.Id == "navbar-centered");
+        Assert.Contains(definitions, definition => definition.Id == "hero-split");
+        Assert.Contains(definitions, definition => definition.Id == "footer-multicolumn");
+        Assert.Contains(definitions, definition => definition.Id == "page-404-centered");
         Assert.Equal(definitions.Count, definitions.Select(item => item.Id).Distinct().Count());
         foreach (var definition in definitions)
         {

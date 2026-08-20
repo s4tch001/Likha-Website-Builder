@@ -46,7 +46,10 @@ public static class ProjectValidator
         ValidateBreakpoints(project.Breakpoints);
         ValidateVariables(project.Variables);
         ValidateAssets(project.Assets);
-        ValidatePages(project.Pages, project.Assets.Select(asset => asset.RelativePath).ToHashSet(StringComparer.Ordinal));
+        ValidatePages(
+            project.Pages,
+            project.Assets.Select(asset => asset.RelativePath).ToHashSet(StringComparer.Ordinal),
+            project.Breakpoints.Select(breakpoint => breakpoint.Id).ToHashSet(StringComparer.Ordinal));
     }
 
     private static void ValidateBreakpoints(IReadOnlyList<Breakpoint> breakpoints)
@@ -137,7 +140,10 @@ public static class ProjectValidator
         }
     }
 
-    private static void ValidatePages(IReadOnlyList<Page> pages, IReadOnlySet<string> assetPaths)
+    private static void ValidatePages(
+        IReadOnlyList<Page> pages,
+        IReadOnlySet<string> assetPaths,
+        IReadOnlySet<string> breakpointIds)
     {
         var pageIds = new HashSet<string>(StringComparer.Ordinal);
         var routes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -175,7 +181,7 @@ public static class ProjectValidator
                     Fail("The element tree is null, too deep, or too large.");
                 }
 
-                ValidateNode(node, page.Id, elementIds, assetPaths);
+                ValidateNode(node, page.Id, elementIds, assetPaths, breakpointIds);
                 for (var index = node.Children.Count - 1; index >= 0; index--)
                 {
                     stack.Push((node.Children[index], depth + 1));
@@ -188,7 +194,8 @@ public static class ProjectValidator
         ElementNode node,
         string pageId,
         HashSet<string> ids,
-        IReadOnlySet<string> assetPaths)
+        IReadOnlySet<string> assetPaths,
+        IReadOnlySet<string> breakpointIds)
     {
         RequireText(node.Id, 128, $"page[{pageId}].element.id");
         RequireText(node.Type, 128, $"element[{node.Id}].type");
@@ -238,9 +245,9 @@ public static class ProjectValidator
         foreach (var (breakpointId, styles) in node.ResponsiveStyles)
         {
             RequireText(breakpointId, 128, $"element[{node.Id}].responsiveStyles key");
-            if (styles is null)
+            if (styles is null || !breakpointIds.Contains(breakpointId))
             {
-                Fail($"Element '{node.Id}' has a null responsive style layer.");
+                Fail($"Element '{node.Id}' has an unknown or null responsive style layer.");
             }
 
             ValidateStyles(node.Id, styles);

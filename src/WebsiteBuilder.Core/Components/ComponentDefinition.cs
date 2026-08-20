@@ -20,15 +20,20 @@ public static partial class ComponentDefinitionValidator
     public static void ValidateAndThrow(ComponentDefinition definition)
     {
         ArgumentNullException.ThrowIfNull(definition);
-        if (!IdRegex().IsMatch(definition.Id)
+        if (string.IsNullOrWhiteSpace(definition.Id) || !IdRegex().IsMatch(definition.Id)
             || string.IsNullOrWhiteSpace(definition.Name) || definition.Name.Length > 160
             || string.IsNullOrWhiteSpace(definition.Category) || definition.Category.Length > 80
             || string.IsNullOrWhiteSpace(definition.Description) || definition.Description.Length > 500
             || string.IsNullOrWhiteSpace(definition.Glyph) || definition.Glyph.Length > 8
-            || definition.Tags.Count > 32
+            || definition.Tags is null || definition.Tags.Count > 32
             || definition.Tags.Any(tag => string.IsNullOrWhiteSpace(tag) || tag.Length > 64))
         {
             throw new ProjectValidationException($"Component definition '{definition.Id}' has invalid metadata.");
+        }
+
+        if (definition.Root is null)
+        {
+            throw new ProjectValidationException($"Component definition '{definition.Id}' has no root element.");
         }
 
         var project = Project.CreateDefault("Component validation");
