@@ -157,6 +157,22 @@ export default function Canvas() {
 
       const store = useEditorStore.getState();
 
+      if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z")) {
+        e.preventDefault();
+        if (e.shiftKey) {
+          store.redo();
+        } else {
+          store.undo();
+        }
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && (e.key === "y" || e.key === "Y")) {
+        e.preventDefault();
+        store.redo();
+        return;
+      }
+
       if (e.key === "Escape") {
         store.selectElement(null);
         return;

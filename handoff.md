@@ -192,7 +192,7 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
 
 ---
 
-## 5. ✅ DONE (Phases 1–14 + migrations M1–M3f; 0/0 build, 78 C# + 44 editor tests)
+## 5. ✅ DONE (Phases 1–14 + 15a + migrations M1–M3f; 0/0 build, 78 C# + 47 editor tests)
 
 - **Phase 1 — Scaffolding.** Solution, 5 src + 2 test projects, Project JSON model
   (ElementNode/Page/Project/Breakpoint), ProjectSerializer, and service interfaces.
@@ -296,6 +296,13 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
   entire tree, regenerates IDs, and performs one mutation. Drag-parser tests cover valid,
   malformed, oversized, and unsafe envelopes. Phase 14 closes with all definitions exercised by
   both exporters and a clean Next.js 16.3.1 production build.
+- **Phase 15a — bounded editor history and keyboard undo/redo (2026-08-20).** Added a
+  50-snapshot linear Project history around the canonical Zustand mutation stream. Undo/redo
+  restores a cloned snapshot as a new revision so it still passes through host conflict checks;
+  new edits clear redo, and host loads/conflict recovery clear both stacks. Ctrl+Z, Ctrl+Shift+Z,
+  and Ctrl+Y work when focus is outside text-entry controls. Tests cover round trips, redo
+  invalidation, host reset, selection safety, and the history bound. Full snapshots are an
+  intentional correctness-first trade-off; Phase 16 will address history memory/diffing.
 - **Migration M3a — repository safety baseline (2026-08-20).** Initialized Git on `main`,
   normalized repository text to LF through `.gitattributes` + `.editorconfig`, expanded ignore
   rules for generated build/typecheck/coverage output, local agent settings, environment files,
@@ -342,11 +349,10 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
 
 ## 6. ⛔ NOT DONE — Phase 14 onward
 
-- **Phase 15 — Undo/Redo integration.** `UndoRedoService` exists but NO mutations push
-  commands yet. Wire editor mutations (and host edits) through the command/undo stack so
-  Ctrl+Z/Y work. The Edit ribbon Undo/Redo are bound but currently no-op (empty stack).
-  This likely needs an editor-side history (the model lives in the Zustand store) plus a
-  bridge channel, or a host-side history of project snapshots.
+- **Phase 15 — Undo/Redo integration (15a complete).** Remaining: 15b publish editor history
+  availability to WPF and wire Edit ribbon/menu commands; 15c finalize host-originated mutation
+  boundaries/status and integration coverage. Asset filesystem import/delete remains a separate
+  transactional concern: history must never restore metadata without the corresponding file.
 - **Phase 16 — Performance.** Virtualized rendering, lazy loading, efficient diffing —
   target 10k+ elements, 60fps drag. (Current: full-project structuredClone per mutation +
   debounced full-project push. Fine for now, optimize here.)
@@ -381,7 +387,7 @@ rule). Today's date context in prior sessions was 2026-06; convert relative date
 
 ## 8. Suggested first action in the new session
 
-Continue with **Phase 15a — editor-side bounded project history and keyboard undo/redo**. The user explicitly
+Continue with **Phase 15b — WPF undo/redo bridge and commands**. The user explicitly
 asked Codex to continue through later phases/sub-phases and to update this handoff after every
 completed sub-phase, stopping work when remaining Codex usage reaches 10%. Preserve the Phase
 13 canonical-asset boundary plus the M3 revision, validation, persistence, coverage, and

@@ -19,6 +19,10 @@ export const MAX_ZOOM = 400;
 
 export const DEFAULT_CANVAS_BACKGROUND = "#141417";
 const CANVAS_BG_STORAGE_KEY = "wb.canvasBackground";
+const HISTORY_LIMIT = 50;
+const undoHistory: Project[] = [];
+const redoHistory: Project[] = [];
+let applyingHistory = false;
 
 function loadCanvasBackground(): string {
   if (typeof window === "undefined") {
@@ -229,9 +233,15 @@ interface EditorState {
   /** Last authoritative host revision this editor snapshot is based on. */
   hostRevision: number;
 
+  /** Bounded editor-side project history availability. */
+  canUndo: boolean;
+  canRedo: boolean;
+
   setReady: (ready: boolean) => void;
   setProject: (project: Project, hostRevision?: number) => void;
   acknowledgeHostRevision: (hostRevision: number) => void;
+  undo: () => void;
+  redo: () => void;
   setActivePage: (pageId: string) => void;
   setBreakpoint: (breakpointId: string) => void;
   setZoom: (zoom: number) => void;
@@ -338,6 +348,8 @@ export const useEditorStore = create<EditorState>((set) => ({
   canvasBackground: loadCanvasBackground(),
   revision: 0,
   hostRevision: 0,
+  canUndo: false,
+  canRedo: false,
 
   setReady: (ready) => set({ ready }),
 
@@ -368,6 +380,8 @@ export const useEditorStore = create<EditorState>((set) => ({
     }),
 
   acknowledgeHostRevision: (hostRevision) => set({ hostRevision }),
+  undo: () => applyHistory("undo"),
+  redo: () => applyHistory("redo"),
 
   setActivePage: (pageId) => set({ activePageId: pageId }),
   setBreakpoint: (breakpointId) => set({ breakpointId }),
@@ -1084,6 +1098,66 @@ export const useEditorStore = create<EditorState>((set) => ({
       };
     }),
 }));
+
+function refreshHistoryAvailability(): void {
+  useEditorStore.setState({
+    canUndo: undoHistory.length > 0,
+    canRedo: redoHistory.length > 0,
+  });
+}
+
+function clearEditorHistory(): void {
+  undoHistory.length = 0;
+  redoHistory.length = 0;
+  refreshHistoryAvailability();
+}
+
+function applyHistory(direction: "undo" | "redo"): void {
+  const source = direction === "undo" ? undoHistory : redoHistory;
+  const destination = direction === "undo" ? redoHistory : undoHistory;
+  const snapshot = source.pop();
+  const current = useEditorStore.getState();
+  if (!snapshot || !current.project) {
+    refreshHistoryAvailability();
+    return;
+  }
+
+  destination.push(structuredClone(current.project) as Project);
+  applyingHistory = true;
+  try {
+    const project = structuredClone(snapshot) as Project;
+    useEditorStore.setState({
+      project,
+      revision: current.revision + 1,
+      selectedIds: current.selectedIds.filter(
+        (id) => findNode(project, id) !== null,
+      ),
+    });
+  } finally {
+    applyingHistory = false;
+  }
+  refreshHistoryAvailability();
+}
+
+useEditorStore.subscribe((state, previous) => {
+  if (applyingHistory || state.project === previous.project) {
+    return;
+  }
+
+  if (state.revision === previous.revision + 1 && previous.project !== null) {
+    undoHistory.push(structuredClone(previous.project) as Project);
+    if (undoHistory.length > HISTORY_LIMIT) {
+      undoHistory.shift();
+    }
+    redoHistory.length = 0;
+    refreshHistoryAvailability();
+    return;
+  }
+
+  // Host loads/conflict recovery replace the canonical project without an
+  // editor revision increment. Old snapshots must never cross that boundary.
+  clearEditorHistory();
+});
 
 /** Selector: the page currently being edited. */
 export function useActivePage(): Page | null {

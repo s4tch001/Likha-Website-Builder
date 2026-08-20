@@ -228,6 +228,47 @@ describe("editorStore", () => {
     ).toBeUndefined();
   });
 
+  it("undoes and redoes editor project mutations", () => {
+    const store = useEditorStore.getState();
+    expect(store.canUndo).toBe(false);
+    store.setStyle("a", "background", "#ff0000");
+    expect(useEditorStore.getState().canUndo).toBe(true);
+
+    useEditorStore.getState().undo();
+    expect(
+      findNode(useEditorStore.getState().project!, "a")!.styles.background,
+    ).toBeUndefined();
+    expect(useEditorStore.getState().canRedo).toBe(true);
+
+    useEditorStore.getState().redo();
+    expect(
+      findNode(useEditorStore.getState().project!, "a")!.styles.background,
+    ).toBe("#ff0000");
+  });
+
+  it("clears redo on a new mutation and clears all history on host project load", () => {
+    useEditorStore.getState().setStyle("a", "color", "red");
+    useEditorStore.getState().undo();
+    useEditorStore.getState().setStyle("a", "color", "blue");
+    expect(useEditorStore.getState().canRedo).toBe(false);
+
+    useEditorStore.getState().setProject(makeProject([]), 99);
+    expect(useEditorStore.getState().canUndo).toBe(false);
+    expect(useEditorStore.getState().canRedo).toBe(false);
+  });
+
+  it("bounds project history to fifty snapshots", () => {
+    for (let x = 1; x <= 55; x += 1) {
+      useEditorStore.getState().moveElement("a", x, 0);
+    }
+    for (let count = 0; count < 50; count += 1) {
+      useEditorStore.getState().undo();
+    }
+
+    expect(findNode(useEditorStore.getState().project!, "a")!.x).toBe(5);
+    expect(useEditorStore.getState().canUndo).toBe(false);
+  });
+
   it("setText sets and clears text", () => {
     const store = useEditorStore.getState();
     store.setText("a", "Hello");
