@@ -43,12 +43,14 @@ export default function AlignToolbar() {
   }
 
   return (
-    <div className="align-toolbar">
+    <div className="align-toolbar" role="toolbar" aria-label="Align selection">
       {BUTTONS.map((b, i) => (
         <button
           key={b.mode}
+          type="button"
           className={`align-btn${i === 6 ? " align-sep" : ""}`}
           title={b.title}
+          aria-label={b.title}
           disabled={b.needsThree && count < 3}
           onClick={() => align(b.mode)}
         >

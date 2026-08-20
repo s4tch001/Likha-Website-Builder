@@ -12,6 +12,11 @@
   box-sizing: border-box;
 }
 
+:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
+}
+
 html,
 body,
 #root {
@@ -176,9 +181,10 @@ body {
 }
 
 .palette-title {
+  margin: 0;
   font-size: 11px;
   font-weight: 600;
-  color: #6f6f7a;
+  color: #a4a4af;
   padding: 10px 12px 6px;
   letter-spacing: 0.04em;
 }
@@ -190,7 +196,7 @@ body {
 
 .palette-group-name {
   font-size: 10px;
-  color: #6f6f7a;
+  color: #a4a4af;
   margin: 10px 4px 6px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -203,6 +209,9 @@ body {
 }
 
 .palette-item {
+  appearance: none;
+  width: 100%;
+  padding: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -218,6 +227,11 @@ body {
   transition:
     background 0.12s,
     border-color 0.12s;
+}
+
+.palette-item:focus-visible {
+  border-color: #60a5fa;
+  outline-offset: 1px;
 }
 
 .palette-item:hover {
@@ -236,4 +250,15 @@ body {
 
 .palette-label {
   font-size: 10px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

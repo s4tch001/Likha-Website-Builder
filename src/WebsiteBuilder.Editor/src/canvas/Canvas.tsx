@@ -271,6 +271,8 @@ export default function Canvas() {
         active &&
         (active.tagName === "INPUT" ||
           active.tagName === "TEXTAREA" ||
+          active.tagName === "BUTTON" ||
+          active.tagName === "SELECT" ||
           active.isContentEditable)
       ) {
         return;
@@ -776,6 +778,9 @@ export default function Canvas() {
       <div
         ref={clipRef}
         className={`canvas-clip${panning ? " panning" : ""}`}
+        tabIndex={0}
+        role="region"
+        aria-label="Design canvas. Use arrow keys to move the selection, Delete to remove, and Control D to duplicate."
         style={{ left: RULER_SIZE, top: RULER_SIZE }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}

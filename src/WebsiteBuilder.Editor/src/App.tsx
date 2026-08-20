@@ -71,10 +71,12 @@ export default function App() {
 
   return (
     <div className="editor-root">
-      <div className="editor-topbar">
+      <header className="editor-topbar">
         <span className="topbar-title">{project?.name ?? "Likha"}</span>
         <span
           className={`topbar-status${bridge.isHosted && hostInfo ? " ok" : ""}`}
+          role="status"
+          aria-live="polite"
         >
           {status}
         </span>
@@ -90,14 +92,14 @@ export default function App() {
           {breakpoint ? `${breakpoint.label} · ` : ""}
           {Math.round(zoom)}%
         </span>
-      </div>
-      <div className="editor-body">
+      </header>
+      <main className="editor-body" aria-label="Website editor workspace">
         <ComponentPalette />
         <div className="editor-canvas-host">
           <Canvas />
           <AlignToolbar />
         </div>
-      </div>
+      </main>
     </div>
   );
 }

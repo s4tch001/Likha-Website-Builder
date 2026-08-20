@@ -347,6 +347,14 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
   conflict/recovery transaction. The 10k/60-nudge result is 1,558.4 ms (38.50/s), 27.3× baseline,
   with 450 settled DOM nodes. All 59 editor tests, 72.84% line coverage, production/Release gates,
   and 78 C# tests pass.
+- **Phase 17a — editor accessibility and quality baseline (2026-08-20).** Replaced the drag-only
+  in-editor palette tiles with native buttons supporting click/Enter/Space insertion while keeping
+  drag-to-position. Added workspace landmarks, named canvas/toolbar controls, polite connection
+  status, focus-visible and reduced-motion styles, shortcut focus guards, and corrected palette/
+  ruler contrast. Chrome Lighthouse snapshot measured 100 Accessibility, Best Practices, SEO, and
+  Agentic Browsing (29 passed, 0 failed). This automated result does not replace manual NVDA,
+  High Contrast, 200% scaling, touch, and packaged-WebView testing; limits are documented in
+  `docs/quality/phase17-accessibility.md`.
 - **Migration M3a — repository safety baseline (2026-08-20).** Initialized Git on `main`,
   normalized repository text to LF through `.gitattributes` + `.editorconfig`, expanded ignore
   rules for generated build/typecheck/coverage output, local agent settings, environment files,
@@ -397,7 +405,7 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
   updates/sec with stable subscriptions, viewport culling/spatial indexes, immutable path copies,
   and structurally shared history. Preserve the measured budgets in Phase 17; this is a 27.3× gain,
   not a claim of locked 60 fps at 10k.
-- **Phase 17 — Final polish.** Theming, animations, context menus, tabs, accessibility,
+- **Phase 17 — Final polish (17a accessibility complete).** Remaining: theming, animations, context menus, tabs,
   packaging/installer, production hardening. (Optionally rename the actual exe to Likha.exe
   here — currently AssemblyName=WebsiteBuilder is kept to avoid breaking data-folder/layout
   paths and tooling.)
