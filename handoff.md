@@ -377,8 +377,9 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
   normalized repository text to LF through `.gitattributes` + `.editorconfig`, expanded ignore
   rules for generated build/typecheck/coverage output, local agent settings, environment files,
   and temporary backups, then captured the audited pre-hardening source as a baseline commit and
-  annotated tag. No application behavior changed. A remote backup still needs a user-selected
-  private Git host/repository before anything can be pushed externally.
+  annotated tag. No application behavior changed. The full `main` history and all annotated phase/
+  migration tags are backed up to the private GitHub repository
+  `https://github.com/s4tch001/p-website-builder` through the `origin` remote.
 - **Migration M3b — authoritative state synchronization (2026-08-20).** Added host-owned
   monotonic revisions, revision-checked editor updates, conflict recovery, serialized editor
   pushes, and host→editor mutation publication. Asset imports/deletions can no longer be
@@ -445,8 +446,8 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
   Zustand 5 belongs with the Phase 16 state/performance work; ESLint 10 remains blocked by
   `eslint-plugin-import`'s ESLint 9 peer range under `eslint-config-next`; xUnit VS runner 4 and
   its analyzer-major change should be handled as a separate test-infrastructure migration.
-- The Git repository has no remote. Configure a user-selected private remote before pushing;
-  do not guess a host or repository URL.
+- The private GitHub remote is `origin` → `https://github.com/s4tch001/p-website-builder.git`.
+  `main` tracks `origin/main`; preserve private visibility unless the user explicitly changes it.
 
 ---
 
@@ -458,8 +459,8 @@ rule). Today's date context in prior sessions was 2026-06; convert relative date
 
 ## 8. Suggested first action in the new session
 
-Phase 17 is complete. Before public distribution, obtain the user's real publisher certificate,
-publisher/upgrade identity, preferred installer format/channel, and private Git remote URL. For
+Phase 17 and the private GitHub backup are complete. Before public distribution, obtain the user's
+real publisher certificate, publisher/upgrade identity, and preferred installer format/channel. For
 product work, choose an explicitly scoped follow-up from the backlog (group resize, a typed advanced
 transform inspector, or richer interactive widgets) rather than treating those optional features as
 unfinished Phase 17. Preserve the Phase 13 canonical-asset boundary, Phase 16 performance budgets,
