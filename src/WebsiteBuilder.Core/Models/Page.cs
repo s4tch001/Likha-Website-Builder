@@ -23,7 +23,7 @@ public sealed class Page
     [JsonPropertyName("root")]
     public ElementNode Root { get; set; } = new()
     {
-        Id = "root",
+        Id = $"root-{Guid.NewGuid():N}",
         Type = ElementTypes.Section,
         Name = "Page Root",
     };

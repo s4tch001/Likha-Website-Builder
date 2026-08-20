@@ -182,6 +182,69 @@ public class HtmlCodeGeneratorTests
     }
 
     [Fact]
+    public void Generate_NestedRoute_UsesCorrectRelativeAssetPaths()
+    {
+        var project = Project.CreateDefault("Nested");
+        project.Pages[0].Route = "company/about";
+
+        var html = new HtmlCodeGenerator().Generate(project)
+            .Single(file => file.RelativePath == "company/about.html").Contents;
+
+        Assert.Contains("href=\"../css/styles.css\"", html);
+        Assert.Contains("src=\"../js/main.js\"", html);
+    }
+
+    [Fact]
+    public void Generate_RejectsEventHandlerAttribute()
+    {
+        var project = Project.CreateDefault("Unsafe");
+        project.Pages[0].Root.Children.Add(new ElementNode
+        {
+            Id = "bad-image",
+            Type = ElementTypes.Image,
+            Attributes = { ["src"] = "Assets/photo.png", ["onerror"] = "alert(1)" },
+        });
+
+        Assert.Throws<WebsiteBuilder.Core.Validation.ProjectValidationException>(
+            () => new HtmlCodeGenerator().Generate(project));
+    }
+
+    [Fact]
+    public void Generate_RejectsCssRuleBreakout()
+    {
+        var project = Project.CreateDefault("Unsafe CSS");
+        project.Pages[0].Root.Children.Add(new ElementNode
+        {
+            Id = "bad-style",
+            Type = ElementTypes.Div,
+            Styles = { ["color}; body { background"] = "red" },
+        });
+
+        Assert.Throws<WebsiteBuilder.Core.Validation.ProjectValidationException>(
+            () => new HtmlCodeGenerator().Generate(project));
+    }
+
+    [Fact]
+    public void Generate_PageRootResponsiveStyles_AreScopedPerPage()
+    {
+        var project = Project.CreateDefault("Responsive roots");
+        project.Pages[0].Root.ResponsiveStyles["mobile"] = new() { ["padding"] = "8px" };
+        var about = new Page { Id = "about-page", Name = "About", Route = "about" };
+        about.Root.ResponsiveStyles["mobile"] = new() { ["padding"] = "16px" };
+        project.Pages.Add(about);
+
+        var files = new HtmlCodeGenerator().Generate(project);
+        var css = files.Single(file => file.RelativePath == "css/styles.css").Contents;
+        var home = files.Single(file => file.RelativePath == "index.html").Contents;
+        var aboutHtml = files.Single(file => file.RelativePath == "about.html").Contents;
+
+        Assert.Contains(".wb-page-index", css);
+        Assert.Contains(".wb-page-about", css);
+        Assert.Contains("wb-page wb-page-index", home);
+        Assert.Contains("wb-page wb-page-about", aboutHtml);
+    }
+
+    [Fact]
     public void Generate_IsDeterministic()
     {
         var generator = new HtmlCodeGenerator();

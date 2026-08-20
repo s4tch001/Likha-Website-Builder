@@ -38,11 +38,13 @@ public sealed class WebStyleSheet
 
     /// <summary>A page root's class: the shared frame plus a per-page class when the root has styles.</summary>
     public static string RootClass(Page page) =>
-        page.Root.Styles.Count > 0 ? $"wb-page wb-page-{Sanitize(FileStem(page))}" : "wb-page";
+        page.Root.Styles.Count > 0 || page.Root.ResponsiveStyles.Values.Any(layer => layer.Count > 0)
+            ? $"wb-page wb-page-{Sanitize(FileStem(page))}"
+            : "wb-page";
 
     /// <summary>Output file stem for a page (its route, defaulting to "index").</summary>
     public static string FileStem(Page page) =>
-        string.IsNullOrWhiteSpace(page.Route) ? "index" : page.Route.Trim();
+        string.IsNullOrWhiteSpace(page.Route) ? "index" : page.Route.Trim().Trim('/');
 
     /// <summary>Turns an element id into a CSS-class-safe suffix.</summary>
     public static string Sanitize(string id)
@@ -140,13 +142,13 @@ public sealed class WebStyleSheet
             }
         }
 
-        AppendMediaQueries(sb, project, project.Pages.Select(p => p.Root));
+        AppendMediaQueries(sb, project, project.Pages);
         return sb.ToString();
     }
 
-    private static void AppendMediaQueries(StringBuilder sb, Project project, IEnumerable<ElementNode> roots)
+    private static void AppendMediaQueries(StringBuilder sb, Project project, IEnumerable<Page> pages)
     {
-        var rootList = roots.ToList();
+        var pageList = pages.ToList();
         var breakpoints = project.Breakpoints
             .Where(b => !b.IsBase && b.MaxWidth > 0)
             .OrderByDescending(b => b.MaxWidth)
@@ -155,9 +157,14 @@ public sealed class WebStyleSheet
         foreach (var bp in breakpoints)
         {
             var blocks = new List<(string Selector, IReadOnlyList<KeyValuePair<string, string>> Declarations)>();
-            foreach (var root in rootList)
+            foreach (var page in pageList)
             {
-                CollectOverrides(root, bp.Id, isRoot: true, blocks);
+                CollectOverrides(
+                    page.Root,
+                    bp.Id,
+                    isRoot: true,
+                    rootSelector: ".wb-page-" + Sanitize(FileStem(page)),
+                    blocks);
             }
 
             if (blocks.Count == 0)
@@ -188,18 +195,19 @@ public sealed class WebStyleSheet
         ElementNode node,
         string breakpointId,
         bool isRoot,
+        string rootSelector,
         List<(string Selector, IReadOnlyList<KeyValuePair<string, string>> Declarations)> blocks)
     {
         if (node.ResponsiveStyles.TryGetValue(breakpointId, out var overrides) && overrides.Count > 0)
         {
-            var selector = isRoot ? ".wb-page" : ".wb-" + Sanitize(node.Id);
+            var selector = isRoot ? rootSelector : ".wb-" + Sanitize(node.Id);
             var declarations = overrides.OrderBy(kv => kv.Key, StringComparer.Ordinal).ToList();
             blocks.Add((selector, declarations));
         }
 
         foreach (var child in node.Children)
         {
-            CollectOverrides(child, breakpointId, isRoot: false, blocks);
+            CollectOverrides(child, breakpointId, isRoot: false, rootSelector, blocks);
         }
     }
 

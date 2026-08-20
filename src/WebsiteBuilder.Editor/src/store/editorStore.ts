@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { createElement } from "../model/elementFactory";
 import type { BreakpointDef, ElementNode, Page, Project } from "../model/types";
+import { isSafeCssPropertyName, isSafeCssValue } from "../model/projectValidation";
 
 export const MIN_ZOOM = 10;
 export const MAX_ZOOM = 400;
@@ -656,7 +657,7 @@ export const useEditorStore = create<EditorState>((set) => ({
 
   setStyle: (id, name, value) =>
     set((state) => {
-      if (!state.project) {
+      if (!state.project || !isSafeCssPropertyName(name) || (value !== "" && !isSafeCssValue(value))) {
         return {};
       }
       const project = structuredClone(state.project) as Project;

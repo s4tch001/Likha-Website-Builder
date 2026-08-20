@@ -1,5 +1,6 @@
 import { bridge } from "../bridge/bridge";
 import type { Project } from "../model/types";
+import { isValidProject } from "../model/projectValidation";
 import { effectiveStyles } from "../model/responsive";
 import { type AlignMode, findNode, findParent, useEditorStore } from "../store/editorStore";
 
@@ -25,16 +26,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function readProjectEnvelope(value: unknown): ProjectSyncEnvelope | null {
-  if (!isRecord(value) || !Number.isSafeInteger(value.revision) || !isRecord(value.project)) {
+  if (!isRecord(value) || !Number.isSafeInteger(value.revision) || !isValidProject(value.project)) {
     return null;
   }
 
-  const project = value.project as Partial<Project>;
-  if (!Array.isArray(project.pages) || !Array.isArray(project.breakpoints) || !Array.isArray(project.assets)) {
-    return null;
-  }
-
-  return { project: project as Project, revision: value.revision as number };
+  return { project: value.project, revision: value.revision as number };
 }
 
 let connected = false;

@@ -135,7 +135,7 @@ public class ReactCodeGeneratorTests
     }
 
     [Fact]
-    public void UnsafeRouteAndAttributes_AreSanitizedOrDiscarded()
+    public void UnsafeRouteAndAttributes_AreRejectedAtTheBoundary()
     {
         var project = BuildProject();
         var unsafePage = new Page { Id = "unsafe", Name = "Unsafe", Route = "../../Admin Panel" };
@@ -154,18 +154,12 @@ public class ReactCodeGeneratorTests
         });
         project.Pages.Add(unsafePage);
 
-        var files = new ReactCodeGenerator().Generate(project);
-        var pageFile = files.Single(file => file.RelativePath == "app/page/page/Admin-Panel/page.tsx");
-
-        Assert.DoesNotContain("..", pageFile.RelativePath, StringComparison.Ordinal);
-        Assert.DoesNotContain("javascript:", pageFile.Contents, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("onClick", pageFile.Contents, StringComparison.Ordinal);
-        Assert.DoesNotContain("dangerouslySetInnerHTML", pageFile.Contents, StringComparison.Ordinal);
-        Assert.Contains("data-testid=\"safe-link\"", pageFile.Contents);
+        Assert.Throws<WebsiteBuilder.Core.Validation.ProjectValidationException>(
+            () => new ReactCodeGenerator().Generate(project));
     }
 
     [Fact]
-    public void ImageElement_UsesNextImageWithSafeFallback()
+    public void ImageElement_RejectsScriptUrl()
     {
         var project = BuildProject();
         project.Pages[0].Root.Children.Add(new ElementNode
@@ -178,13 +172,8 @@ public class ReactCodeGeneratorTests
             Attributes = { ["src"] = "javascript:alert(1)", ["alt"] = "Cover" },
         });
 
-        var page = FileContents(project, "app/page.tsx");
-
-        Assert.Contains("import Image from \"next/image\";", page);
-        Assert.Contains("<Image className=\"wb-cover\"", page);
-        Assert.Contains("src=\"data:image/gif;base64,", page);
-        Assert.Contains("alt=\"Cover\" width={320} height={180} unoptimized", page);
-        Assert.DoesNotContain("javascript:", page, StringComparison.OrdinalIgnoreCase);
+        Assert.Throws<WebsiteBuilder.Core.Validation.ProjectValidationException>(
+            () => FileContents(project, "app/page.tsx"));
     }
 
     [Fact]

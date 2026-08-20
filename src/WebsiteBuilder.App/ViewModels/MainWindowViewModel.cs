@@ -325,12 +325,20 @@ public sealed partial class MainWindowViewModel : ObservableObject
         try
         {
             var files = generator.Generate(_projects.Current);
+            var targets = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var file in files)
             {
-                var relative = file.RelativePath.Replace('/', Path.DirectorySeparatorChar);
-                var fullPath = Path.Combine(folder, relative);
+                var fullPath = ExportPathPolicy.ResolveContainedPath(folder, file.RelativePath);
+                if (!targets.Add(fullPath))
+                {
+                    throw new InvalidDataException($"The generator produced duplicate output '{file.RelativePath}'.");
+                }
+
                 Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
-                await File.WriteAllTextAsync(fullPath, file.Contents).ConfigureAwait(true);
+                await AtomicFileWriter.WriteAllTextAsync(
+                    fullPath,
+                    file.Contents,
+                    createBackup: false).ConfigureAwait(true);
             }
 
             StatusMessage = $"Exported {files.Count} files to {folder}";

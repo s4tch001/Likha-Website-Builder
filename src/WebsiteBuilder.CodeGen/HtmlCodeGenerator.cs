@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
 using WebsiteBuilder.Core.Models;
+using WebsiteBuilder.Core.Validation;
 
 namespace WebsiteBuilder.CodeGen;
 
@@ -27,6 +28,7 @@ public sealed class HtmlCodeGenerator : ICodeGenerator
     public IReadOnlyList<GeneratedFile> Generate(Project project)
     {
         ArgumentNullException.ThrowIfNull(project);
+        ProjectValidator.ValidateAndThrow(project);
 
         if (project.Pages.Count == 0)
         {
@@ -60,6 +62,8 @@ public sealed class HtmlCodeGenerator : ICodeGenerator
     {
         var sb = new StringBuilder();
         var title = WebUtility.HtmlEncode($"{page.Name} — {project.Name}");
+        var routeDepth = WebStyleSheet.FileStem(page).Count(character => character == '/');
+        var relativePrefix = string.Concat(Enumerable.Repeat("../", routeDepth));
 
         sb.Append("<!DOCTYPE html>\n");
         sb.Append("<html lang=\"en\">\n");
@@ -67,8 +71,8 @@ public sealed class HtmlCodeGenerator : ICodeGenerator
         sb.Append("  <meta charset=\"utf-8\">\n");
         sb.Append("  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n");
         sb.Append($"  <title>{title}</title>\n");
-        sb.Append($"  <link rel=\"stylesheet\" href=\"{StylesheetPath}\">\n");
-        sb.Append($"  <script src=\"{ScriptPath}\" defer></script>\n");
+        sb.Append($"  <link rel=\"stylesheet\" href=\"{relativePrefix}{StylesheetPath}\">\n");
+        sb.Append($"  <script src=\"{relativePrefix}{ScriptPath}\" defer></script>\n");
         sb.Append("</head>\n");
         sb.Append("<body>\n");
         AppendElement(sb, page.Root, depth: 1, rootClass: WebStyleSheet.RootClass(page), sheet);
@@ -122,7 +126,7 @@ public sealed class HtmlCodeGenerator : ICodeGenerator
 
         foreach (var (name, value) in node.Attributes)
         {
-            if (string.IsNullOrWhiteSpace(name) || !IsSafeAttributeName(name))
+            if (!ProjectContentPolicy.IsSafeHtmlAttribute(name, value))
             {
                 continue;
             }
@@ -133,6 +137,4 @@ public sealed class HtmlCodeGenerator : ICodeGenerator
         return sb.ToString();
     }
 
-    private static bool IsSafeAttributeName(string name) =>
-        name.All(c => char.IsLetterOrDigit(c) || c is '-' or '_' or ':');
 }

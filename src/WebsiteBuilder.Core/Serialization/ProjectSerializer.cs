@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using WebsiteBuilder.Core.Models;
+using WebsiteBuilder.Core.Validation;
 
 namespace WebsiteBuilder.Core.Serialization;
 
@@ -22,6 +23,7 @@ public static class ProjectSerializer
     public static string Serialize(Project project)
     {
         ArgumentNullException.ThrowIfNull(project);
+        ProjectValidator.ValidateAndThrow(project);
         return JsonSerializer.Serialize(project, Options);
     }
 
@@ -30,6 +32,11 @@ public static class ProjectSerializer
         if (string.IsNullOrWhiteSpace(json))
         {
             throw new ArgumentException("Project JSON is empty.", nameof(json));
+        }
+
+        if (json.Length > ProjectValidator.MaxJsonCharacters)
+        {
+            throw new ProjectValidationException("Project JSON exceeds the maximum supported size.");
         }
 
         // Parse to a mutable node first so older documents can be migrated forward
@@ -49,7 +56,7 @@ public static class ProjectSerializer
 
         var project = doc.Deserialize<Project>(Options)
             ?? throw new InvalidDataException("Project JSON deserialized to null.");
-        project.Assets ??= new List<ProjectAsset>();
+        ProjectValidator.ValidateAndThrow(project);
         return project;
     }
 }

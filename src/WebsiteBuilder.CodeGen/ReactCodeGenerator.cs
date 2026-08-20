@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using WebsiteBuilder.Core.Models;
+using WebsiteBuilder.Core.Validation;
 
 namespace WebsiteBuilder.CodeGen;
 
@@ -50,6 +51,7 @@ public sealed class ReactCodeGenerator : ICodeGenerator
     public IReadOnlyList<GeneratedFile> Generate(Project project)
     {
         ArgumentNullException.ThrowIfNull(project);
+        ProjectValidator.ValidateAndThrow(project);
 
         if (project.Pages.Count == 0)
         {

@@ -8,6 +8,7 @@ using WebsiteBuilder.Bridge;
 using WebsiteBuilder.Core.Models;
 using WebsiteBuilder.Core.Serialization;
 using WebsiteBuilder.Core.Services;
+using WebsiteBuilder.Core.Validation;
 
 namespace WebsiteBuilder.App.Services;
 
@@ -218,6 +219,7 @@ public sealed class EditorSession
 
             var request = JsonSerializer.Deserialize<ProjectUpdateRequest>(payloadJson, ProjectSerializer.Options)
                 ?? throw new InvalidDataException("Project update payload is invalid.");
+            ProjectValidator.ValidateAndThrow(request.Project);
             var accepted = _projects.TryApplyEditorUpdate(
                 request.Project,
                 request.BaseRevision,
@@ -245,10 +247,6 @@ public sealed class EditorSession
 
             case "editor.rendered":
                 OnEditorRendered(e.PayloadJson);
-                break;
-
-            case "editor.projectChanged":
-                OnProjectChanged(e.PayloadJson);
                 break;
 
             case "editor.selftestResult":
@@ -408,27 +406,6 @@ public sealed class EditorSession
     /// <summary>Sets an element's inline text content.</summary>
     public void SetText(string id, string text)
         => _ = _bridge?.PublishAsync("editor.setText", new { id, text });
-
-    private void OnProjectChanged(string? payloadJson)
-    {
-        if (string.IsNullOrEmpty(payloadJson))
-        {
-            return;
-        }
-
-        try
-        {
-            var project = ProjectSerializer.Deserialize(payloadJson);
-            _projects.ApplyEditorUpdate(project);
-
-            var count = project.Pages.Sum(p => p.Root.DescendantsAndSelf().Count());
-            SetStatus($"Host received edit · model now has {count} elements");
-        }
-        catch (Exception ex) when (ex is JsonException or InvalidDataException)
-        {
-            // Ignore malformed updates rather than corrupting the model.
-        }
-    }
 
     private void OnEditorRendered(string? payloadJson)
     {
