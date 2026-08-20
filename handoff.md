@@ -429,6 +429,15 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
   production builds plus silent install, eight-second installed-app startup, and clean uninstall
   with no leftover test directory or registry entry. README is intentionally end-user-only: app
   information, requirements, installation, basic use, and uninstall.
+- **Migration M3i — private-repository maintenance audit (2026-08-20).** Confirmed all five
+  requested Dependabot PRs are closed with their compatible upgrades incorporated or the unsupported
+  ESLint 10 line narrowly deferred. Commit `6657a66` passed both push CI runs and the manual GitHub
+  release workflow, which uploaded the ZIP, setup EXE, and checksum artifact. Main-branch protection
+  remains an external account-plan blocker: both the classic protection and modern rulesets APIs
+  returned HTTP 403 stating that this private repository requires GitHub Pro (or public visibility).
+  The repository must stay private, so do not make it public merely to clear the notice. After the
+  owner upgrades the GitHub plan, require the `Build, test, and audit` check, strict up-to-date
+  branches, conversation resolution, linear history, and prevention of force-pushes/deletions.
 
 ### Standalone polish/fixes already done (user-requested)
 - App renamed to **"Likha - Website Builder"** + logo as exe/window/taskbar icon.
@@ -469,6 +478,9 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
   their peer ranges and the full clean-install/lint gate confirm compatibility.
 - The private GitHub remote is `origin` → `https://github.com/s4tch001/p-website-builder.git`.
   `main` tracks `origin/main`; preserve private visibility unless the user explicitly changes it.
+- GitHub currently rejects both protected-branch and ruleset APIs for this private repository with
+  an explicit GitHub Pro requirement. The branch-protection notice cannot be cleared on the current
+  plan without either upgrading or violating the private-repository requirement.
 
 ---
 
@@ -481,9 +493,10 @@ rule). Today's date context in prior sessions was 2026-06; convert relative date
 ## 8. Suggested first action in the new session
 
 Phase 17, the private GitHub backup, dependency migrations, and the personal-use Windows installer
-are complete. Verify protected-main settings and release CI before any future product work. Then
-choose an explicitly scoped optional follow-up (group resize, a typed advanced transform inspector,
-or richer interactive widgets) rather than treating it as unfinished Phase 17. Preserve the Phase
-13 canonical-asset boundary, Phase 16 performance budgets, and the M3 revision, validation,
-persistence, coverage, dependency, and installer gates. Continue updating this handoff after every
-completed sub-phase and stop when remaining Codex usage reaches 10%.
+are complete. Release CI is verified. Main protection is ready to apply only after the owner enables
+GitHub Pro for the private repository; until then, preserve private visibility. For future product
+work, choose an explicitly scoped optional follow-up (group resize, a typed advanced transform
+inspector, or richer interactive widgets) rather than treating it as unfinished Phase 17. Preserve
+the Phase 13 canonical-asset boundary, Phase 16 performance budgets, and the M3 revision,
+validation, persistence, coverage, dependency, and installer gates. Continue updating this handoff
+after every completed sub-phase and stop when remaining Codex usage reaches 10%.
