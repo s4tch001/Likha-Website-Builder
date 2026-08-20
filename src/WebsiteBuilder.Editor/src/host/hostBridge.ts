@@ -225,6 +225,8 @@ export async function connectHost(): Promise<HostInfo | null> {
     const n = state.revision % 6;
     state.insertComponent(root, 64 + n * 24, 64 + n * 24);
   });
+  bridge.on("editor.undo", () => useEditorStore.getState().undo());
+  bridge.on("editor.redo", () => useEditorStore.getState().redo());
 
   // Headless verification: drive a move + reparent and report the outcome.
   bridge.on("editor.runSelfTest", () => {
@@ -378,6 +380,23 @@ export async function connectHost(): Promise<HostInfo | null> {
     }
   });
 
+  let lastCanUndo = store.canUndo;
+  let lastCanRedo = store.canRedo;
+  const publishHistory = () => {
+    const state = useEditorStore.getState();
+    bridge.publish("editor.historyChanged", {
+      canUndo: state.canUndo,
+      canRedo: state.canRedo,
+    });
+  };
+  useEditorStore.subscribe((state) => {
+    if (state.canUndo !== lastCanUndo || state.canRedo !== lastCanRedo) {
+      lastCanUndo = state.canUndo;
+      lastCanRedo = state.canRedo;
+      publishHistory();
+    }
+  });
+
   // Publish the selection to the host so the Property Inspector reflects the
   // canvas selection. Sends the count plus the primary element (first selected).
   let lastSelKey = store.selectedIds.join(",");
@@ -456,6 +475,7 @@ export async function connectHost(): Promise<HostInfo | null> {
     editor: "WebsiteBuilder",
     version: "0.1.0",
   });
+  publishHistory();
 
   // The host's request handler returns the project as a JSON object payload.
   const snapshot = readProjectEnvelope(

@@ -20,7 +20,6 @@ namespace WebsiteBuilder.App.ViewModels;
 public sealed partial class MainWindowViewModel : ObservableObject
 {
     private readonly IProjectService _projects;
-    private readonly IUndoRedoService _undoRedo;
     private readonly ICommandRegistry _registry;
     private readonly IFileDialogService _fileDialogs;
     private readonly EditorSession _editor;
@@ -39,7 +38,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public MainWindowViewModel(
         IProjectService projects,
-        IUndoRedoService undoRedo,
         ICommandRegistry registry,
         IFileDialogService fileDialogs,
         EditorSession editor,
@@ -55,7 +53,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
         FileManagerViewModel fileManager)
     {
         _projects = projects;
-        _undoRedo = undoRedo;
         _registry = registry;
         _fileDialogs = fileDialogs;
         _editor = editor;
@@ -73,7 +70,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         _projects.CurrentChanged += (_, project) => OnProjectChanged(project);
         _projects.DirtyChanged += (_, _) => RefreshTitle();
-        _undoRedo.StateChanged += (_, _) => RefreshUndoRedo();
+        _editor.HistoryChanged += (_, _) => RefreshUndoRedo();
         _editor.SelectionChanged += (_, _) => RefreshSelectionCommands();
         _autoSave.AutoSaved += (_, message) => StatusMessage = message;
 
@@ -149,8 +146,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _registry.Register(new AppCommand("file.exportReact", "Export Next.js", "File", new AsyncRelayCommand(ExportReactAsync), glyph: "⚛"));
 
         // Edit
-        _undoCommand = new RelayCommand(_undoRedo.Undo, () => _undoRedo.CanUndo);
-        _redoCommand = new RelayCommand(_undoRedo.Redo, () => _undoRedo.CanRedo);
+        _undoCommand = new RelayCommand(_editor.Undo, () => _editor.CanUndo);
+        _redoCommand = new RelayCommand(_editor.Redo, () => _editor.CanRedo);
         _registry.Register(new AppCommand("edit.undo", "Undo", "Edit", _undoCommand, "Ctrl+Z", "↶"));
         _registry.Register(new AppCommand("edit.redo", "Redo", "Edit", _redoCommand, "Ctrl+Y", "↷"));
 
@@ -208,7 +205,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
 
         _projects.New();
-        _undoRedo.Clear();
         StatusMessage = "Created new project.";
     }
 
@@ -228,7 +224,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
         try
         {
             await _projects.OpenAsync(path).ConfigureAwait(true);
-            _undoRedo.Clear();
             StatusMessage = $"Opened {path}";
         }
         catch (Exception ex)

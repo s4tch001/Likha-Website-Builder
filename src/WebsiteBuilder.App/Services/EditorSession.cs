@@ -84,6 +84,12 @@ public sealed class EditorSession
     /// <summary>Whether anything is currently selected on the canvas.</summary>
     public bool HasSelection => SelectedCount > 0;
 
+    public bool CanUndo { get; private set; }
+
+    public bool CanRedo { get; private set; }
+
+    public event EventHandler? HistoryChanged;
+
     /// <summary>The live bridge to the editor, or null until <see cref="AttachAsync"/> completes.</summary>
     public IEditorBridge? Bridge => _bridge;
 
@@ -276,6 +282,10 @@ public sealed class EditorSession
                 OnSelectionChanged(e.PayloadJson);
                 break;
 
+            case "editor.historyChanged":
+                OnHistoryChanged(e.PayloadJson);
+                break;
+
             case "editor.rotateResult":
                 if (!string.IsNullOrEmpty(e.PayloadJson))
                 {
@@ -399,6 +409,10 @@ public sealed class EditorSession
     /// <summary>Asks the editor to duplicate the currently selected element.</summary>
     public void DuplicateSelected() => _ = _bridge?.PublishAsync("editor.duplicateSelected", new { });
 
+    public void Undo() => _ = _bridge?.PublishAsync("editor.undo", new { });
+
+    public void Redo() => _ = _bridge?.PublishAsync("editor.redo", new { });
+
     /// <summary>Aligns/distributes the current selection (mode = left/hcenter/right/top/vmiddle/bottom/distH/distV).</summary>
     public void Align(string mode) => _ = _bridge?.PublishAsync("editor.align", new { mode });
 
@@ -436,6 +450,27 @@ public sealed class EditorSession
         catch (JsonException)
         {
             // Diagnostics only.
+        }
+    }
+
+    private void OnHistoryChanged(string? payloadJson)
+    {
+        if (string.IsNullOrEmpty(payloadJson))
+        {
+            return;
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(payloadJson);
+            var root = doc.RootElement;
+            CanUndo = root.TryGetProperty("canUndo", out var undo) && undo.GetBoolean();
+            CanRedo = root.TryGetProperty("canRedo", out var redo) && redo.GetBoolean();
+            HistoryChanged?.Invoke(this, EventArgs.Empty);
+        }
+        catch (JsonException)
+        {
+            // Ignore malformed diagnostics/state events from the embedded editor.
         }
     }
 

@@ -169,6 +169,20 @@ describe("connectHost", () => {
       hidden: true,
       locked: true,
     });
+    expect(state.canUndo).toBe(true);
+    expect(harness.published).toContainEqual({
+      method: "editor.historyChanged",
+      payload: expect.objectContaining({ canUndo: true }),
+    });
+
+    emit("editor.undo");
+    expect(findNode(useEditorStore.getState().project!, "b")?.locked).toBe(
+      false,
+    );
+    emit("editor.redo");
+    expect(findNode(useEditorStore.getState().project!, "b")?.locked).toBe(
+      true,
+    );
 
     useEditorStore.getState().renameElement("a", "Edited again");
     await vi.advanceTimersByTimeAsync(100);

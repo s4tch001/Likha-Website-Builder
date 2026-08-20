@@ -192,7 +192,7 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
 
 ---
 
-## 5. ✅ DONE (Phases 1–14 + 15a + migrations M1–M3f; 0/0 build, 78 C# + 47 editor tests)
+## 5. ✅ DONE (Phases 1–14 + 15a–15b + migrations M1–M3f; 0/0 build, 78 C# + 47 editor tests)
 
 - **Phase 1 — Scaffolding.** Solution, 5 src + 2 test projects, Project JSON model
   (ElementNode/Page/Project/Breakpoint), ProjectSerializer, and service interfaces.
@@ -303,6 +303,11 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
   and Ctrl+Y work when focus is outside text-entry controls. Tests cover round trips, redo
   invalidation, host reset, selection safety, and the history bound. Full snapshots are an
   intentional correctness-first trade-off; Phase 16 will address history memory/diffing.
+- **Phase 15b — WPF undo/redo bridge (2026-08-20).** The editor publishes live history
+  availability and accepts explicit undo/redo events. `EditorSession` mirrors `CanUndo/CanRedo`,
+  raises command-state notifications, and the Edit ribbon/Ctrl command bindings now invoke the
+  editor history instead of the unused empty host stack. Bridge integration tests cover the
+  availability event and host-driven undo/redo round trip.
 - **Migration M3a — repository safety baseline (2026-08-20).** Initialized Git on `main`,
   normalized repository text to LF through `.gitattributes` + `.editorconfig`, expanded ignore
   rules for generated build/typecheck/coverage output, local agent settings, environment files,
@@ -349,8 +354,7 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
 
 ## 6. ⛔ NOT DONE — Phase 14 onward
 
-- **Phase 15 — Undo/Redo integration (15a complete).** Remaining: 15b publish editor history
-  availability to WPF and wire Edit ribbon/menu commands; 15c finalize host-originated mutation
+- **Phase 15 — Undo/Redo integration (15a–15b complete).** Remaining: 15c finalize host-originated mutation
   boundaries/status and integration coverage. Asset filesystem import/delete remains a separate
   transactional concern: history must never restore metadata without the corresponding file.
 - **Phase 16 — Performance.** Virtualized rendering, lazy loading, efficient diffing —
@@ -387,7 +391,7 @@ rule). Today's date context in prior sessions was 2026-06; convert relative date
 
 ## 8. Suggested first action in the new session
 
-Continue with **Phase 15b — WPF undo/redo bridge and commands**. The user explicitly
+Continue with **Phase 15c — mutation boundaries, status, and final undo integration coverage**. The user explicitly
 asked Codex to continue through later phases/sub-phases and to update this handoff after every
 completed sub-phase, stopping work when remaining Codex usage reaches 10%. Preserve the Phase
 13 canonical-asset boundary plus the M3 revision, validation, persistence, coverage, and
