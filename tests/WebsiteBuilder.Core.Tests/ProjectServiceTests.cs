@@ -1,4 +1,5 @@
 using WebsiteBuilder.Core.Models;
+using WebsiteBuilder.Core.Serialization;
 using WebsiteBuilder.Core.Services;
 using Xunit;
 
@@ -210,6 +211,60 @@ public class ProjectServiceTests
                 File.Delete(source);
             }
 
+            if (Directory.Exists(folder))
+            {
+                Directory.Delete(folder, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Save_CreatesRollingBackupOfPreviousProject()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), $"wb_{Guid.NewGuid():N}");
+        try
+        {
+            var service = new ProjectService();
+            var project = service.New("First");
+            await service.SaveToFolderAsync(folder);
+
+            project.Name = "Second";
+            service.ApplyEditorUpdate(project);
+            await service.SaveAsync();
+
+            var backupPath = Path.Combine(folder, ProjectService.ProjectFileName + ".bak");
+            Assert.True(File.Exists(backupPath));
+            Assert.Equal("First", ProjectSerializer.Deserialize(await File.ReadAllTextAsync(backupPath)).Name);
+            Assert.Equal(
+                "Second",
+                ProjectSerializer.Deserialize(await File.ReadAllTextAsync(Path.Combine(folder, ProjectService.ProjectFileName))).Name);
+        }
+        finally
+        {
+            if (Directory.Exists(folder))
+            {
+                Directory.Delete(folder, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task SaveToFolder_RefusesToOverwriteAnotherProject()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), $"wb_{Guid.NewGuid():N}");
+        try
+        {
+            Directory.CreateDirectory(folder);
+            await File.WriteAllTextAsync(Path.Combine(folder, ProjectService.ProjectFileName), "existing");
+
+            var service = new ProjectService();
+            service.New();
+
+            await Assert.ThrowsAsync<IOException>(() => service.SaveToFolderAsync(folder));
+            Assert.Equal("existing", await File.ReadAllTextAsync(Path.Combine(folder, ProjectService.ProjectFileName)));
+        }
+        finally
+        {
             if (Directory.Exists(folder))
             {
                 Directory.Delete(folder, recursive: true);

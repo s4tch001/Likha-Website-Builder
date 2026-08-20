@@ -33,6 +33,8 @@ public partial class MainWindow : Window, IShellLayout
     // Airspace workaround state.
     private LayoutAutoHideWindowControl? _autoHide;
     private WebView2? _canvasWeb;
+    private bool _closePromptActive;
+    private bool _closeApproved;
 
     private static string LayoutPath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -75,8 +77,33 @@ public partial class MainWindow : Window, IShellLayout
         _viewModel.AttachLayout(this);
     }
 
-    private void OnClosing(object? sender, CancelEventArgs e)
+    private async void OnClosing(object? sender, CancelEventArgs e)
     {
+        if (!_closeApproved && _viewModel.HasUnsavedChanges)
+        {
+            e.Cancel = true;
+            if (_closePromptActive)
+            {
+                return;
+            }
+
+            _closePromptActive = true;
+            try
+            {
+                if (await _viewModel.ConfirmCanReplaceAsync("closing Likha").ConfigureAwait(true))
+                {
+                    _closeApproved = true;
+                    Close();
+                }
+            }
+            finally
+            {
+                _closePromptActive = false;
+            }
+
+            return;
+        }
+
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(LayoutPath)!);

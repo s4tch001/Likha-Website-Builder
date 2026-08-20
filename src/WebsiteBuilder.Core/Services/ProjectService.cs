@@ -26,6 +26,7 @@ public sealed class ProjectService : IProjectService
     private string? _currentPath;
     private bool _isDirty;
     private long _revision;
+    private readonly SemaphoreSlim _writeGate = new(1, 1);
 
     /// <inheritdoc />
     public Project? Current => _current;
@@ -106,38 +107,61 @@ public sealed class ProjectService : IProjectService
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(folderPath);
 
-        Directory.CreateDirectory(folderPath);
-        var filePath = Path.Combine(folderPath, ProjectFileName);
+        var fullFolderPath = Path.GetFullPath(folderPath);
+        Directory.CreateDirectory(fullFolderPath);
+        var filePath = Path.Combine(fullFolderPath, ProjectFileName);
+        if (File.Exists(filePath)
+            && !string.Equals(filePath, _currentPath, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new IOException($"The selected folder already contains a {ProjectFileName} project.");
+        }
+
         await WriteAsync(filePath, cancellationToken).ConfigureAwait(false);
         _currentPath = filePath;
     }
 
     private async Task WriteAsync(string path, CancellationToken cancellationToken)
     {
-        var project = _current
-            ?? throw new InvalidOperationException("There is no current project to save.");
-
-        project.ModifiedUtc = DateTimeOffset.UtcNow;
-
-        var directory = Path.GetDirectoryName(path);
-        if (!string.IsNullOrEmpty(directory))
+        await _writeGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
         {
-            Directory.CreateDirectory(directory);
+            var project = _current
+                ?? throw new InvalidOperationException("There is no current project to save.");
+            var savedRevision = _revision;
 
-            // A folder-based project (project.json) gets the standard layout scaffolded
-            // alongside it so later phases (assets, components, exports) have a home.
-            if (string.Equals(Path.GetFileName(path), ProjectFileName, StringComparison.OrdinalIgnoreCase))
+            project.ModifiedUtc = DateTimeOffset.UtcNow;
+
+            var directory = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(directory))
             {
-                foreach (var folder in StandardFolders)
+                Directory.CreateDirectory(directory);
+
+                // A folder-based project (project.json) gets the standard layout scaffolded
+                // alongside it so later phases (assets, components, exports) have a home.
+                if (string.Equals(Path.GetFileName(path), ProjectFileName, StringComparison.OrdinalIgnoreCase))
                 {
-                    Directory.CreateDirectory(Path.Combine(directory, folder));
+                    foreach (var folder in StandardFolders)
+                    {
+                        Directory.CreateDirectory(Path.Combine(directory, folder));
+                    }
                 }
             }
-        }
 
-        var json = ProjectSerializer.Serialize(project);
-        await File.WriteAllTextAsync(path, json, cancellationToken).ConfigureAwait(false);
-        SetDirty(false);
+            var json = ProjectSerializer.Serialize(project);
+            await AtomicFileWriter.WriteAllTextAsync(
+                path,
+                json,
+                createBackup: true,
+                cancellationToken).ConfigureAwait(false);
+            if (_revision == savedRevision)
+            {
+                SetDirty(false);
+            }
+        }
+        finally
+        {
+            _writeGate.Release();
+        }
     }
 
     /// <inheritdoc />

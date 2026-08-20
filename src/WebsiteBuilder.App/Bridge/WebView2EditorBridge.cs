@@ -211,7 +211,7 @@ public sealed class WebView2EditorBridge : IEditorBridge, IDisposable
                     Payload = resultJson is null ? null : JsonSerializer.Deserialize<JsonElement>(resultJson),
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 response = ErrorResponse(request, "handler_error", "The host could not process the request.");
             }

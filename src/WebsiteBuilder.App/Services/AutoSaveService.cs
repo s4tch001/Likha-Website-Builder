@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text.Json;
 using System.Windows.Threading;
 using WebsiteBuilder.Core.Serialization;
 using WebsiteBuilder.Core.Services;
@@ -68,7 +69,7 @@ public sealed class AutoSaveService
             }
             else
             {
-                WriteRecovery();
+                await WriteRecoveryAsync().ConfigureAwait(true);
                 AutoSaved?.Invoke(this, $"Recovery copy saved {DateTime.Now:HH:mm:ss} (use Save As to keep it)");
             }
         }
@@ -78,12 +79,36 @@ public sealed class AutoSaveService
         }
     }
 
-    private void WriteRecovery()
+    private Task WriteRecoveryAsync()
     {
-        var directory = Path.GetDirectoryName(_recoveryPath)!;
-        Directory.CreateDirectory(directory);
-        File.WriteAllText(_recoveryPath, ProjectSerializer.Serialize(_projects.Current!));
+        return AtomicFileWriter.WriteAllTextAsync(
+            _recoveryPath,
+            ProjectSerializer.Serialize(_projects.Current!),
+            createBackup: false);
     }
+
+    /// <summary>Attempts to deserialize the current recovery snapshot.</summary>
+    public bool TryReadRecovery(out WebsiteBuilder.Core.Models.Project? project)
+    {
+        project = null;
+        try
+        {
+            if (!File.Exists(_recoveryPath))
+            {
+                return false;
+            }
+
+            project = ProjectSerializer.Deserialize(File.ReadAllText(_recoveryPath));
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or JsonException or InvalidDataException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Deletes the recovery snapshot after restore or explicit discard.</summary>
+    public void DiscardRecovery() => DeleteRecovery();
 
     private void DeleteRecovery()
     {

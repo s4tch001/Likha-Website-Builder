@@ -1,5 +1,13 @@
 namespace WebsiteBuilder.App.Services;
 
+/// <summary>Decision returned by the unsaved-changes confirmation dialog.</summary>
+public enum UnsavedChangesChoice
+{
+    Save,
+    Discard,
+    Cancel,
+}
+
 /// <summary>
 /// Abstracts the native open/save file dialogs so view models stay testable and
 /// free of direct <c>Microsoft.Win32</c> dependencies.
@@ -17,4 +25,10 @@ public interface IFileDialogService
 
     /// <summary>Shows a folder-picker dialog. Returns the chosen folder, or null if cancelled.</summary>
     string? PromptFolder(string title, string? initialDirectory = null);
+
+    /// <summary>Asks whether unsaved changes should be saved, discarded, or kept open.</summary>
+    UnsavedChangesChoice PromptUnsavedChanges(string projectName, string action);
+
+    /// <summary>Asks whether a crash-recovery snapshot should be restored.</summary>
+    bool PromptRestoreRecovery();
 }

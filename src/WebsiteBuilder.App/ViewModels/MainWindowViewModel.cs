@@ -80,11 +80,27 @@ public sealed partial class MainWindowViewModel : ObservableObject
         // content. The initial project gets a starter layout to render.
         if (_projects.Current is null)
         {
-            var project = _projects.New();
-            ProjectTemplates.ApplyStarter(project);
-            // Refresh dependent panels now that starter content exists.
-            ProjectExplorer.Reload();
-            Layers.Reload();
+            var restored = false;
+            if (_autoSave.HasRecovery && _autoSave.TryReadRecovery(out var recovery) && recovery is not null)
+            {
+                if (_fileDialogs.PromptRestoreRecovery())
+                {
+                    _projects.ApplyHostUpdate(recovery);
+                    restored = true;
+                    StatusMessage = "Recovered unsaved project.";
+                }
+
+                _autoSave.DiscardRecovery();
+            }
+
+            if (!restored)
+            {
+                var project = _projects.New();
+                ProjectTemplates.ApplyStarter(project);
+                // Refresh dependent panels now that starter content exists.
+                ProjectExplorer.Reload();
+                Layers.Reload();
+            }
         }
         else
         {
@@ -107,6 +123,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public const string AppName = "Likha - Website Builder";
 
+    /// <summary>True when closing or replacing the project requires confirmation.</summary>
+    public bool HasUnsavedChanges => _projects.IsDirty;
+
     [ObservableProperty]
     private string _title = AppName;
 
@@ -119,7 +138,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private void BuildCommands()
     {
         // File
-        _registry.Register(AppCommand.Create("file.new", "New", "File", NewProject, gestureText: "Ctrl+N", glyph: "🗋"));
+        _registry.Register(new AppCommand("file.new", "New", "File", new AsyncRelayCommand(NewProjectAsync), "Ctrl+N", "🗋"));
         _registry.Register(new AppCommand("file.open", "Open", "File", new AsyncRelayCommand(OpenProjectAsync), "Ctrl+O", "📂"));
         _registry.Register(new AppCommand("file.save", "Save", "File", new AsyncRelayCommand(SaveProjectAsync), "Ctrl+S", "💾"));
         _registry.Register(new AppCommand("file.saveAs", "Save As", "File", new AsyncRelayCommand(SaveProjectAsAsync), "Ctrl+Shift+S", "💾"));
@@ -178,8 +197,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _registry.Register(new AppCommand(id, title, "Arrange", command));
     }
 
-    private void NewProject()
+    private async Task NewProjectAsync()
     {
+        if (!await ConfirmCanReplaceAsync("creating a new project").ConfigureAwait(true))
+        {
+            return;
+        }
+
         _projects.New();
         _undoRedo.Clear();
         StatusMessage = "Created new project.";
@@ -187,6 +211,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     private async Task OpenProjectAsync()
     {
+        if (!await ConfirmCanReplaceAsync("opening another project").ConfigureAwait(true))
+        {
+            return;
+        }
+
         var path = _fileDialogs.PromptOpen(OpenFilter, "Open Project");
         if (path is null)
         {
@@ -206,32 +235,39 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     private async Task SaveProjectAsync()
+        => _ = await SaveProjectCoreAsync().ConfigureAwait(true);
+
+    private async Task<bool> SaveProjectCoreAsync()
     {
         if (_projects.CurrentPath is null)
         {
-            await SaveProjectAsAsync().ConfigureAwait(true);
-            return;
+            return await SaveProjectAsCoreAsync().ConfigureAwait(true);
         }
 
         try
         {
             await _projects.SaveAsync().ConfigureAwait(true);
             StatusMessage = $"Saved {_projects.CurrentPath}";
+            return true;
         }
         catch (Exception ex)
         {
             StatusMessage = $"Failed to save project: {ex.Message}";
+            return false;
         }
     }
 
     private async Task SaveProjectAsAsync()
+        => _ = await SaveProjectAsCoreAsync().ConfigureAwait(true);
+
+    private async Task<bool> SaveProjectAsCoreAsync()
     {
         var folder = _fileDialogs.PromptFolder(
             "Choose a folder for the project (project.json and asset folders are created here)",
             _projects.ProjectDirectory);
         if (folder is null)
         {
-            return;
+            return false;
         }
 
         try
@@ -241,11 +277,31 @@ public sealed partial class MainWindowViewModel : ObservableObject
             FileManager.Refresh();
             Assets.Refresh();
             StatusMessage = $"Saved to {_projects.ProjectDirectory}";
+            return true;
         }
         catch (Exception ex)
         {
             StatusMessage = $"Failed to save project: {ex.Message}";
+            return false;
         }
+    }
+
+    /// <summary>
+    /// Resolves unsaved work before replacing or closing the active project.
+    /// </summary>
+    public async Task<bool> ConfirmCanReplaceAsync(string action)
+    {
+        if (!_projects.IsDirty)
+        {
+            return true;
+        }
+
+        return _fileDialogs.PromptUnsavedChanges(_projects.Current?.Name ?? "Untitled Project", action) switch
+        {
+            UnsavedChangesChoice.Discard => true,
+            UnsavedChangesChoice.Save => await SaveProjectCoreAsync().ConfigureAwait(true),
+            _ => false,
+        };
     }
 
     private Task ExportStaticHtmlAsync() => ExportAsync(new HtmlCodeGenerator(), "static HTML site");

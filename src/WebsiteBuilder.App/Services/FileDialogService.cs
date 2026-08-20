@@ -1,4 +1,5 @@
 using Microsoft.Win32;
+using System.Windows;
 
 namespace WebsiteBuilder.App.Services;
 
@@ -60,4 +61,25 @@ public sealed class FileDialogService : IFileDialogService
 
         return dialog.ShowDialog() == true ? dialog.FolderName : null;
     }
+
+    public UnsavedChangesChoice PromptUnsavedChanges(string projectName, string action)
+    {
+        var result = MessageBox.Show(
+            $"Save changes to '{projectName}' before {action}?",
+            "Unsaved changes",
+            MessageBoxButton.YesNoCancel,
+            MessageBoxImage.Warning);
+        return result switch
+        {
+            MessageBoxResult.Yes => UnsavedChangesChoice.Save,
+            MessageBoxResult.No => UnsavedChangesChoice.Discard,
+            _ => UnsavedChangesChoice.Cancel,
+        };
+    }
+
+    public bool PromptRestoreRecovery() => MessageBox.Show(
+        "Likha found an unsaved recovery copy from the previous session. Restore it now?",
+        "Restore recovered project",
+        MessageBoxButton.YesNo,
+        MessageBoxImage.Question) == MessageBoxResult.Yes;
 }
