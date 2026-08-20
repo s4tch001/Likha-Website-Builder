@@ -192,7 +192,7 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
 
 ---
 
-## 5. ✅ DONE (Phases 1–15 + migrations M1–M3f; 0/0 build, 78 C# + 47 editor tests)
+## 5. ✅ DONE (Phases 1–15 + 16a + migrations M1–M3f; 0/0 build, 78 C# + 49 editor tests)
 
 - **Phase 1 — Scaffolding.** Solution, 5 src + 2 test projects, Project JSON model
   (ElementNode/Page/Project/Breakpoint), ProjectSerializer, and service interfaces.
@@ -314,6 +314,14 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
   filesystem asset import/delete—clear editor history by design, preventing metadata snapshots
   from being restored without their files. Full Release/Next production gates pass; editor
   coverage is now 70.32% lines.
+- **Phase 16a — benchmark harness and measured baseline (2026-08-20).** Added an opt-in,
+  deterministic, validated `?benchmark=N` standalone project generator capped at 10,000 elements
+  and documented the Chrome trace in `docs/performance/phase16-baseline.md`. At 10k: 10,181 DOM
+  nodes, 57 ms style recalculation, 67 ms layout, and 69 ms unattributed forced reflow. Cold-load
+  LCP was 156 ms with CLS 0, but 60 requestAnimationFrame-paced nudges took 42,503.5 ms (about
+  1.41 updates/sec), proving that load metrics mask severe editing latency. Confirmed causes are
+  full-Project cloning/history/sync, per-element Project subscriptions, whole-tree context
+  invalidation, and no viewport culling. The baseline defines measurable budgets for 16b onward.
 - **Migration M3a — repository safety baseline (2026-08-20).** Initialized Git on `main`,
   normalized repository text to LF through `.gitattributes` + `.editorconfig`, expanded ignore
   rules for generated build/typecheck/coverage output, local agent settings, environment files,
@@ -360,9 +368,11 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
 
 ## 6. ⛔ NOT DONE — Phase 14 onward
 
-- **Phase 16 — Performance.** Virtualized rendering, lazy loading, efficient diffing —
-  target 10k+ elements, 60fps drag. (Current: full-project structuredClone per mutation +
-  debounced full-project push. Fine for now, optimize here.)
+- **Phase 16 — Performance (16a baseline complete).** Remaining planned splits: 16b remove
+  per-node Project subscriptions and stabilize render inputs; 16c viewport culling/spatial
+  indexing; 16d structural-sharing/patch history and bridge payload optimization, with the same
+  10k trace rerun after every material change. The current measured result is 1.41 updates/sec,
+  not 60 fps.
 - **Phase 17 — Final polish.** Theming, animations, context menus, tabs, accessibility,
   packaging/installer, production hardening. (Optionally rename the actual exe to Likha.exe
   here — currently AssemblyName=WebsiteBuilder is kept to avoid breaking data-folder/layout
@@ -394,7 +404,7 @@ rule). Today's date context in prior sessions was 2026-06; convert relative date
 
 ## 8. Suggested first action in the new session
 
-Continue with **Phase 16a — performance benchmark harness and measured baseline**. The user explicitly
+Continue with **Phase 16b — stable render inputs and subscription reduction**. The user explicitly
 asked Codex to continue through later phases/sub-phases and to update this handoff after every
 completed sub-phase, stopping work when remaining Codex usage reaches 10%. Preserve the Phase
 13 canonical-asset boundary plus the M3 revision, validation, persistence, coverage, and

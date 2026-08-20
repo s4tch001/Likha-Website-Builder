@@ -6,6 +6,7 @@ import AlignToolbar from "./canvas/AlignToolbar";
 import Canvas from "./canvas/Canvas";
 import { connectHost, type HostInfo } from "./host/hostBridge";
 import type { ElementNode } from "./model/types";
+import { createBenchmarkProject } from "./model/benchmarkProject";
 import ComponentPalette from "./palette/ComponentPalette";
 import { useActiveBreakpoint, useEditorStore } from "./store/editorStore";
 
@@ -30,6 +31,14 @@ export default function App() {
   const breakpoint = useActiveBreakpoint();
 
   useEffect(() => {
+    if (!bridge.isHosted) {
+      const requested = Number(
+        new URLSearchParams(window.location.search).get("benchmark"),
+      );
+      if (Number.isFinite(requested) && requested > 0) {
+        useEditorStore.getState().setProject(createBenchmarkProject(requested));
+      }
+    }
     connectHost()
       .then(setHostInfo)
       .catch((err: unknown) =>
