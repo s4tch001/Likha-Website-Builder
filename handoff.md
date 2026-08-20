@@ -12,7 +12,7 @@
 builder** (Webflow/Framer-class). Locked stack:
 
 - **Host:** C# / .NET 10 LTS / **WPF** (Windows-only), hosting the editor in **WebView2**.
-- **Editor:** **Next.js 16.3.1 App Router + React 19.2.8 + TypeScript 7.0.2 + Zustand 4.5.7**,
+- **Editor:** **Next.js 16.3.1 App Router + React 19.2.8 + TypeScript 7.0.2 + Zustand 5.0.15**,
   statically exported and loaded inside WebView2.
 - **Model:** a canonical **Project JSON** is the single source of truth. The editor
   mutates it; code generators (later phases) emit **clean HTML5/CSS3/JS and React**
@@ -22,7 +22,7 @@ builder** (Webflow/Framer-class). Locked stack:
 ### Locked technical decisions (do not change without asking the user)
 - WPF↔Web bridge: **typed JSON-RPC over WebView2 `postMessage`** (`IEditorBridge`).
 - WPF foundation: **CommunityToolkit.Mvvm** + **Microsoft.Extensions DI/Hosting**.
-- Docking: **AvalonDock (Dirkster fork)** 4.72.0 + VS2013 dark theme.
+- Docking: **AvalonDock (Dirkster fork)** 5.0.0 + XML serializer + VS2013 dark theme.
 
 ### ⚠️ WORKING STYLE — the user's standing rule
 Split large work into coherent, independently verifiable sub-phases, but continue through
@@ -43,8 +43,8 @@ WebsiteBuilder.sln
 │   ├── WebsiteBuilder.CodeGen    ICodeGenerator + working static HTML and React emitters
 │   └── WebsiteBuilder.Editor     Next.js/React/TS/Zustand editor. Static export → ../WebsiteBuilder.App/wwwroot
 └── tests/
-    ├── WebsiteBuilder.Core.Tests      (xUnit) 42 tests
-    └── WebsiteBuilder.CodeGen.Tests   (xUnit) 27 tests
+    ├── WebsiteBuilder.Core.Tests      (xUnit) 47 tests
+    └── WebsiteBuilder.CodeGen.Tests   (xUnit) 31 tests
 ```
 
 Editor entry/config (`src/WebsiteBuilder.Editor/`):
@@ -190,7 +190,7 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
 
 ---
 
-## 5. ✅ DONE (Phases 1–17 + migrations M1–M3f; 0/0 build, 78 C# + 61 editor tests)
+## 5. ✅ DONE (Phases 1–17 + migrations M1–M3g; 0/0 build, 78 C# + 61 editor tests)
 
 - **Phase 1 — Scaffolding.** Solution, 5 src + 2 test projects, Project JSON model
   (ElementNode/Page/Project/Breakpoint), ProjectSerializer, and service interfaces.
@@ -395,8 +395,8 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
   size limits, safe attribute/URL/CSS policies, and validation on deserialize, bridge updates,
   serialize, and code generation. Export paths are fully resolved and root-contained, writes
   are atomic, nested-route asset references are correct, and responsive root CSS is page-scoped.
-- **Migration M3e — continuous quality gates (2026-08-20).** Added pinned ESLint 9 + Next
-  rules (ESLint 10 is not yet compatible with the transitive Next plugin), Prettier, TypeScript
+- **Migration M3e — continuous quality gates (2026-08-20).** Added pinned ESLint + Next
+  rules, Prettier, TypeScript
   native typecheck, Vitest/Coverlet coverage floors, bridge/host integration tests, Windows CI,
   Dependabot, npm/NuGet vulnerability audits, and formatting gates. Coverage baseline: editor
   65.24% statements/56.19% branches/73.4% functions/65.31% lines; Core 78.71% lines; CodeGen
@@ -404,10 +404,20 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
 - **Migration M3f — .NET 10 and controlled maintenance (2026-08-20).** Retargeted all C#
   projects to .NET 10 LTS and verified with SDK 10.0.400. Updated CommunityToolkit.Mvvm 8.4.2,
   Microsoft.Extensions.Hosting 10.0.11, WebView2 1.0.4129.50, test SDK 18.9.0, xUnit 2.9.3,
-  runner 3.1.5, Next.js/editor and generated exports 16.3.1, and Vitest 4.1.11. The editor and
+  Next.js/editor and generated exports 16.3.1, and Vitest 4.1.11. The editor and
   generated projects use `@typescript/native` 7.0.2 for the Go compiler plus the official
   `typescript`→`@typescript/typescript6` 6.0.3 compatibility alias for compiler-API consumers;
   `experimental.useTypeScriptCli` keeps Next on native TS7. Clean install/build/tests/audits pass.
+- **Migration M3g — controlled major dependency upgrades (2026-08-20).** Resolved all five
+  Dependabot PRs as one compatibility boundary: upgraded to Zustand 5.0.15, AvalonDock
+  core/theme/XML serializer 5.0.0 with the new `AvalonDock.Serializer.Xml` namespace, and xUnit VS
+  runner 4.0.0. ESLint 10 was tested with the official compatibility wrapper and rejected because
+  Next 16.3.1's transitive React/import/accessibility plugins still declare ESLint 9 peer ranges;
+  Dependabot now ignores only the unsupported 10.x line until that chain is native-compatible.
+  Format/lint/native-TS7 typecheck, 61 editor tests/coverage, production
+  export, 0-warning Release build, and 78 C# tests pass. The 10k/60-nudge Zustand regression result
+  is 1,669 ms (35.95/s) with 450 DOM nodes versus the Phase 16d 1,558.4 ms reference, within normal
+  local-run variance and preserving the performance architecture.
 
 ### Standalone polish/fixes already done (user-requested)
 - App renamed to **"Likha - Website Builder"** + logo as exe/window/taskbar icon.
@@ -442,10 +452,9 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
 - SVG import intentionally rejects active content, animation, embedded/external references,
   and CSS URL references except local `url(#id)`. Raster/media/font parser vulnerabilities
   still depend on the patched OS/browser decoders; Phase 13 does not attempt file transcoding.
-- Controlled major-version deferrals: AvalonDock 5 needs a dedicated docking/layout migration;
-  Zustand 5 belongs with the Phase 16 state/performance work; ESLint 10 remains blocked by
-  `eslint-plugin-import`'s ESLint 9 peer range under `eslint-config-next`; xUnit VS runner 4 and
-  its analyzer-major change should be handled as a separate test-infrastructure migration.
+- ESLint remains on the supported 9.39.5 line until Next's transitive React/import/accessibility
+  plugins publish native ESLint 10 peer support. Remove the scoped Dependabot ignore only after
+  their peer ranges and the full clean-install/lint gate confirm compatibility.
 - The private GitHub remote is `origin` → `https://github.com/s4tch001/p-website-builder.git`.
   `main` tracks `origin/main`; preserve private visibility unless the user explicitly changes it.
 
@@ -459,8 +468,9 @@ rule). Today's date context in prior sessions was 2026-06; convert relative date
 
 ## 8. Suggested first action in the new session
 
-Phase 17 and the private GitHub backup are complete. Before public distribution, obtain the user's
-real publisher certificate, publisher/upgrade identity, and preferred installer format/channel. For
+Phase 17, the private GitHub backup, and the M3g dependency migrations are complete. Continue with
+the personal-use Windows installer requested by the user; public signing is not required for their
+own machine, but preserve the optional Authenticode path. For
 product work, choose an explicitly scoped follow-up from the backlog (group resize, a typed advanced
 transform inspector, or richer interactive widgets) rather than treating those optional features as
 unfinished Phase 17. Preserve the Phase 13 canonical-asset boundary, Phase 16 performance budgets,

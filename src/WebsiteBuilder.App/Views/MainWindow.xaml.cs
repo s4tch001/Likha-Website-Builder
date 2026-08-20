@@ -4,7 +4,7 @@ using System.Windows;
 using System.Windows.Media;
 using AvalonDock.Controls;
 using AvalonDock.Layout;
-using AvalonDock.Layout.Serialization;
+using AvalonDock.Serializer.Xml;
 using Microsoft.Web.WebView2.Wpf;
 using WebsiteBuilder.App.Services;
 using WebsiteBuilder.App.ViewModels;

@@ -11,10 +11,14 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      # Next 16.3.1 still resolves React/import/a11y plugins whose peer ranges
+      # stop at ESLint 9. Revisit after that entire plugin chain supports 10.
+      - dependency-name: eslint
+        versions: [">=10 <11"]
 
   - package-ecosystem: nuget
     directory: /
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
-
