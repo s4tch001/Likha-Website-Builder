@@ -63,9 +63,9 @@ public sealed class PreviewServiceTests
         Directory.CreateDirectory(testRoot);
         await File.WriteAllTextAsync(Path.Combine(testRoot, "index.html"), "home");
         await File.WriteAllTextAsync(Path.Combine(testRoot, "about.html"), "about");
-        await using var server = new LocalPreviewServer();
         try
         {
+            await using var server = new LocalPreviewServer();
             await server.StartAsync(testRoot);
             using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
             var response = await http.GetAsync(new Uri(server.Url!, "about"));
@@ -89,9 +89,9 @@ public sealed class PreviewServiceTests
         Directory.CreateDirectory(root);
         await File.WriteAllTextAsync(Path.Combine(root, "index.html"), "home");
         await File.WriteAllTextAsync(Path.Combine(parent, "secret.txt"), "not public");
-        await using var server = new LocalPreviewServer();
         try
         {
+            await using var server = new LocalPreviewServer();
             await server.StartAsync(root);
             using var client = new TcpClient();
             await client.ConnectAsync(IPAddress.Loopback, server.Url!.Port);
