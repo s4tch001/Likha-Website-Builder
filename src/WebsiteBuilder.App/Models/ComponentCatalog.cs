@@ -15,6 +15,7 @@ public sealed record ComponentItem(
     ComponentDefinition? Definition = null)
 {
     public bool IsBlock => Definition is not null;
+    public string Category => Definition?.Category ?? string.Empty;
     public string ToolTip => string.IsNullOrEmpty(Description) ? $"Click to add {DisplayName}" : Description;
     public string SearchText => Definition is null
         ? $"{DisplayName} {ElementType}"

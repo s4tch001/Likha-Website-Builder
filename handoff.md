@@ -192,7 +192,7 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
 
 ---
 
-## 5. ✅ DONE (Phases 1–13 + 14a–14c + migrations M1–M3f; 0/0 build, 78 C# + 42 editor tests)
+## 5. ✅ DONE (Phases 1–14 + migrations M1–M3f; 0/0 build, 78 C# + 44 editor tests)
 
 - **Phase 1 — Scaffolding.** Solution, 5 src + 2 test projects, Project JSON model
   (ElementNode/Page/Project/Breakpoint), ProjectSerializer, and service interfaces.
@@ -288,6 +288,14 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
   controls instead of generic divs; submissions/navigation remain disabled inside the editor.
   Every built-in definition is exercised through both static HTML and Next.js generators, with
   a focused semantic-form export assertion.
+- **Phase 14d — landing pages and browser polish (2026-08-20).** Added complete SaaS and
+  Services landing-page assemblies composed from the same editable blocks, with mobile root
+  sizing and stacked assembly positions. Block cards now show category and description in a
+  larger visual treatment. WPF blocks support click insertion and true drag-to-canvas through a
+  custom MIME payload plus WebView2 text fallback; the editor caps payload size, validates the
+  entire tree, regenerates IDs, and performs one mutation. Drag-parser tests cover valid,
+  malformed, oversized, and unsafe envelopes. Phase 14 closes with all definitions exercised by
+  both exporters and a clean Next.js 16.3.1 production build.
 - **Migration M3a — repository safety baseline (2026-08-20).** Initialized Git on `main`,
   normalized repository text to LF through `.gitattributes` + `.editorconfig`, expanded ignore
   rules for generated build/typecheck/coverage output, local agent settings, environment files,
@@ -334,8 +342,6 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
 
 ## 6. ⛔ NOT DONE — Phase 14 onward
 
-- **Phase 14 — Component library (14a–14c complete).** Remaining planned split: 14d complete
-  landing-page assemblies plus component-browser drag/drop and visual preview polish.
 - **Phase 15 — Undo/Redo integration.** `UndoRedoService` exists but NO mutations push
   commands yet. Wire editor mutations (and host edits) through the command/undo stack so
   Ctrl+Z/Y work. The Edit ribbon Undo/Redo are bound but currently no-op (empty stack).
@@ -375,7 +381,7 @@ rule). Today's date context in prior sessions was 2026-06; convert relative date
 
 ## 8. Suggested first action in the new session
 
-Continue with **Phase 14d — landing-page assemblies and component browser polish**. The user explicitly
+Continue with **Phase 15a — editor-side bounded project history and keyboard undo/redo**. The user explicitly
 asked Codex to continue through later phases/sub-phases and to update this handoff after every
 completed sub-phase, stopping work when remaining Codex usage reaches 10%. Preserve the Phase
 13 canonical-asset boundary plus the M3 revision, validation, persistence, coverage, and

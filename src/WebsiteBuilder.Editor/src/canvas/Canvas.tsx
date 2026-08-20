@@ -3,6 +3,10 @@ import { frameWidthFor } from "../model/types";
 import { DRAG_MIME } from "../palette/catalog";
 import { ASSET_DRAG_MIME, editorFontFaceCss } from "../model/assetElements";
 import {
+  COMPONENT_DRAG_MIME,
+  parseComponentDragPayload,
+} from "../model/componentDrag";
+import {
   collectElementRects,
   getAbsolutePosition,
   findParent,
@@ -80,6 +84,7 @@ export default function Canvas() {
   const setView = useEditorStore((s) => s.setView);
   const insertElement = useEditorStore((s) => s.insertElement);
   const insertAsset = useEditorStore((s) => s.insertAsset);
+  const insertComponent = useEditorStore((s) => s.insertComponent);
 
   const clipRef = useRef<HTMLDivElement>(null);
   const { width, height } = useElementSize(clipRef);
@@ -541,6 +546,8 @@ export default function Canvas() {
     if (
       e.dataTransfer.types.includes(DRAG_MIME) ||
       e.dataTransfer.types.includes(ASSET_DRAG_MIME) ||
+      e.dataTransfer.types.includes(COMPONENT_DRAG_MIME) ||
+      e.dataTransfer.types.includes("text/plain") ||
       e.dataTransfer.types.includes("Files")
     ) {
       e.preventDefault();
@@ -552,6 +559,10 @@ export default function Canvas() {
     (e: React.DragEvent) => {
       const type = e.dataTransfer.getData(DRAG_MIME);
       const assetId = e.dataTransfer.getData(ASSET_DRAG_MIME);
+      const componentPayload = parseComponentDragPayload(
+        e.dataTransfer.getData(COMPONENT_DRAG_MIME) ||
+          e.dataTransfer.getData("text/plain"),
+      );
       const state = useEditorStore.getState();
       const droppedName = e.dataTransfer.files.item(0)?.name;
       const asset = state.project?.assets.find(
@@ -560,7 +571,7 @@ export default function Canvas() {
           (droppedName !== undefined &&
             candidate.storedFileName === droppedName),
       );
-      if (!type && !asset) {
+      if (!type && !asset && !componentPayload) {
         return;
       }
       e.preventDefault();
@@ -569,13 +580,19 @@ export default function Canvas() {
       const z = state.zoom / 100;
       const worldX = (e.clientX - rect.left - state.panX) / z;
       const worldY = (e.clientY - rect.top - state.panY) / z;
-      if (asset) {
+      if (componentPayload) {
+        insertComponent(
+          componentPayload.root,
+          Math.max(0, worldX),
+          Math.max(0, worldY),
+        );
+      } else if (asset) {
         insertAsset(asset, Math.max(0, worldX), Math.max(0, worldY));
       } else {
         insertElement(type, Math.max(0, worldX), Math.max(0, worldY));
       }
     },
-    [insertAsset, insertElement],
+    [insertAsset, insertComponent, insertElement],
   );
 
   const z = zoom / 100;

@@ -27,12 +27,30 @@
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Width="82" Height="72" Margin="6,4"
-                                                Background="{StaticResource App.Background}"
-                                                BorderBrush="{StaticResource App.Border}"
-                                                BorderThickness="1" CornerRadius="6"
+                                        <Border Margin="6,4"
                                                 ToolTip="{Binding ToolTip}"
-                                                Cursor="Hand">
+                                                Cursor="Hand"
+                                                PreviewMouseLeftButtonDown="Component_OnPreviewMouseLeftButtonDown"
+                                                PreviewMouseMove="Component_OnPreviewMouseMove">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Width" Value="82" />
+                                                    <Setter Property="Height" Value="72" />
+                                                    <Setter Property="Padding" Value="5" />
+                                                    <Setter Property="Background" Value="{StaticResource App.Background}" />
+                                                    <Setter Property="BorderBrush" Value="{StaticResource App.Border}" />
+                                                    <Setter Property="BorderThickness" Value="1" />
+                                                    <Setter Property="CornerRadius" Value="6" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsBlock}" Value="True">
+                                                            <Setter Property="Width" Value="174" />
+                                                            <Setter Property="Height" Value="122" />
+                                                            <Setter Property="Padding" Value="10" />
+                                                            <Setter Property="Background" Value="#202631" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
                                             <Border.InputBindings>
                                                 <MouseBinding MouseAction="LeftClick"
                                                               Command="{Binding DataContext.InsertCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
@@ -50,6 +68,14 @@
                                                            Foreground="{StaticResource App.ForegroundMuted}" />
                                                 <TextBlock Text="BLOCK" FontSize="8" Margin="0,2,0,0"
                                                            Foreground="#93C5FD"
+                                                           Visibility="{Binding IsBlock, Converter={StaticResource BoolToVis}}" />
+                                                <TextBlock Text="{Binding Category}" FontSize="9" Margin="0,2,0,0"
+                                                           Foreground="#60A5FA" HorizontalAlignment="Center"
+                                                           Visibility="{Binding IsBlock, Converter={StaticResource BoolToVis}}" />
+                                                <TextBlock Text="{Binding Description}" FontSize="9" Margin="2,3,2,0"
+                                                           MaxHeight="30" TextTrimming="CharacterEllipsis"
+                                                           TextAlignment="Center" TextWrapping="Wrap"
+                                                           Foreground="{StaticResource App.ForegroundMuted}"
                                                            Visibility="{Binding IsBlock, Converter={StaticResource BoolToVis}}" />
                                             </StackPanel>
                                         </Border>

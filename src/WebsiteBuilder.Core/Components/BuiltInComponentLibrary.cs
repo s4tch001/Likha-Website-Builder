@@ -20,6 +20,8 @@ public static class BuiltInComponentLibrary
             BuildTestimonials(),
             BuildFaq(),
             BuildContactForm(),
+            BuildSaasLandingPage(),
+            BuildServiceLandingPage(),
         ];
         var ids = new HashSet<string>(StringComparer.Ordinal);
         foreach (var definition in definitions)
@@ -56,7 +58,10 @@ public static class BuiltInComponentLibrary
             },
             ResponsiveStyles =
             {
-                ["mobile"] = new() { ["border-radius"] = "12px" },
+                ["mobile"] = new()
+                {
+                    ["left"] = "16px", ["width"] = "448px", ["height"] = "500px", ["border-radius"] = "12px",
+                },
             },
             Children =
             {
@@ -123,7 +128,7 @@ public static class BuiltInComponentLibrary
                 ["background"] = "#ffffff", ["border"] = "1px solid #e5e7eb",
                 ["border-radius"] = "14px", ["box-shadow"] = "0 10px 30px rgba(15, 23, 42, 0.08)",
             },
-            ResponsiveStyles = { ["mobile"] = new() { ["height"] = "132px" } },
+            ResponsiveStyles = { ["mobile"] = MobileRoot("132px") },
             Children =
             {
                 TextNode("tpl-navbar-brand", ElementTypes.Heading, "Brand", 28, 22, 190, 32, "Northstar",
@@ -162,7 +167,7 @@ public static class BuiltInComponentLibrary
             Width = 1100,
             Height = 540,
             Styles = { ["background"] = "#f8fafc", ["border-radius"] = "24px", ["overflow"] = "hidden" },
-            ResponsiveStyles = { ["mobile"] = new() { ["height"] = "760px" } },
+            ResponsiveStyles = { ["mobile"] = MobileRoot("760px") },
             Children =
             {
                 TextNode("tpl-split-kicker", ElementTypes.Text, "Eyebrow", 64, 72, 430, 24, "A CALMER WAY TO SHIP",
@@ -229,7 +234,7 @@ public static class BuiltInComponentLibrary
             Width = 1100,
             Height = 300,
             Styles = { ["background"] = "#0f172a", ["border-radius"] = "20px" },
-            ResponsiveStyles = { ["mobile"] = new() { ["height"] = "470px" } },
+            ResponsiveStyles = { ["mobile"] = MobileRoot("470px") },
             Children =
             {
                 TextNode("tpl-footer-brand", ElementTypes.Heading, "Footer Brand", 52, 50, 240, 36, "Northstar",
@@ -265,6 +270,7 @@ public static class BuiltInComponentLibrary
             Width = 1000,
             Height = 560,
             Styles = { ["background"] = "#f8fafc", ["border"] = "1px solid #e2e8f0", ["border-radius"] = "24px" },
+            ResponsiveStyles = { ["mobile"] = MobileRoot("560px") },
             Children =
             {
                 TextNode("tpl-404-code", ElementTypes.Heading, "Error Code", 300, 86, 400, 120, "404",
@@ -304,7 +310,7 @@ public static class BuiltInComponentLibrary
             Width = 1100,
             Height = 700,
             Styles = { ["background"] = "#f8fafc", ["border-radius"] = "24px" },
-            ResponsiveStyles = { ["mobile"] = new() { ["height"] = "1500px" } },
+            ResponsiveStyles = { ["mobile"] = MobileRoot("1500px") },
             Children =
             {
                 TextNode("tpl-pricing-title", ElementTypes.Heading, "Pricing Title", 230, 58, 640, 56,
@@ -334,7 +340,7 @@ public static class BuiltInComponentLibrary
             Width = 1100,
             Height = 560,
             Styles = { ["background"] = "#0f172a", ["border-radius"] = "24px" },
-            ResponsiveStyles = { ["mobile"] = new() { ["height"] = "1080px" } },
+            ResponsiveStyles = { ["mobile"] = MobileRoot("1080px") },
             Children =
             {
                 TextNode("tpl-testimonials-kicker", ElementTypes.Text, "Section Label", 72, 60, 280, 22,
@@ -364,6 +370,7 @@ public static class BuiltInComponentLibrary
             Width = 1000,
             Height = 720,
             Styles = { ["background"] = "#ffffff", ["border"] = "1px solid #e2e8f0", ["border-radius"] = "22px" },
+            ResponsiveStyles = { ["mobile"] = MobileRoot("720px") },
             Children =
             {
                 TextNode("tpl-faq-title", ElementTypes.Heading, "FAQ Title", 64, 54, 560, 54,
@@ -393,7 +400,7 @@ public static class BuiltInComponentLibrary
             Width = 1000,
             Height = 650,
             Styles = { ["background"] = "linear-gradient(145deg, #eff6ff, #f8fafc)", ["border-radius"] = "24px" },
-            ResponsiveStyles = { ["mobile"] = new() { ["height"] = "820px" } },
+            ResponsiveStyles = { ["mobile"] = MobileRoot("900px") },
             Children =
             {
                 TextNode("tpl-contact-title", ElementTypes.Heading, "Contact Title", 58, 70, 360, 108,
@@ -449,6 +456,85 @@ public static class BuiltInComponentLibrary
                 },
             },
         });
+
+    private static ComponentDefinition BuildSaasLandingPage()
+    {
+        var navbar = Place(BuildNavbar().Root, 50, 28, 28);
+        var hero = Place(BuildSplitHero().Root, 50, 132, 190);
+        var pricing = Place(BuildPricing().Root, 50, 720, 1000);
+        var faq = Place(BuildFaq().Root, 100, 1470, 2550);
+        var footer = Place(BuildFooter().Root, 50, 2240, 3330);
+        return new ComponentDefinition(
+            "landing-saas",
+            "SaaS Landing Page",
+            "Landing Pages",
+            "Complete product landing page with navigation, split hero, pricing, FAQ, and footer.",
+            "S",
+            ["landing page", "saas", "startup", "product", "pricing"],
+            new ElementNode
+            {
+                Id = "tpl-landing-saas",
+                Type = ElementTypes.Container,
+                Name = "SaaS Landing Page",
+                Width = 1200,
+                Height = 2600,
+                Styles = { ["background"] = "#ffffff" },
+                ResponsiveStyles = { ["mobile"] = new() { ["left"] = "0", ["width"] = "480px", ["height"] = "3950px" } },
+                Children = { navbar, hero, pricing, faq, footer },
+            });
+    }
+
+    private static ComponentDefinition BuildServiceLandingPage()
+    {
+        var navbar = Place(BuildNavbar().Root, 50, 28, 28);
+        var hero = Place(BuildSimpleHero().Root, 100, 132, 190);
+        var testimonials = Place(BuildTestimonials().Root, 50, 602, 740);
+        var contact = Place(BuildContactForm().Root, 100, 1212, 1870);
+        var footer = Place(BuildFooter().Root, 50, 1912, 2820);
+        return new ComponentDefinition(
+            "landing-services",
+            "Services Landing Page",
+            "Landing Pages",
+            "Complete services page with hero, proof, contact form, and footer.",
+            "L",
+            ["landing page", "services", "agency", "portfolio", "contact"],
+            new ElementNode
+            {
+                Id = "tpl-landing-services",
+                Type = ElementTypes.Container,
+                Name = "Services Landing Page",
+                Width = 1200,
+                Height = 2290,
+                Styles = { ["background"] = "#ffffff" },
+                ResponsiveStyles = { ["mobile"] = new() { ["left"] = "0", ["width"] = "480px", ["height"] = "3400px" } },
+                Children = { navbar, hero, testimonials, contact, footer },
+            });
+    }
+
+    private static Dictionary<string, string> MobileRoot(string height) => new(StringComparer.Ordinal)
+    {
+        ["left"] = "16px",
+        ["width"] = "448px",
+        ["height"] = height,
+    };
+
+    private static ElementNode Place(ElementNode node, double x, double y, double? mobileTop = null)
+    {
+        node.X = x;
+        node.Y = y;
+        if (mobileTop is not null)
+        {
+            if (!node.ResponsiveStyles.TryGetValue("mobile", out var styles))
+            {
+                styles = new Dictionary<string, string>(StringComparer.Ordinal);
+                node.ResponsiveStyles["mobile"] = styles;
+            }
+
+            styles["top"] = $"{mobileTop.Value}px";
+        }
+
+        return node;
+    }
 
     private static ElementNode PricingCard(
         string suffix,

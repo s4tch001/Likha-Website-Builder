@@ -20,6 +20,8 @@ public sealed class ComponentDefinitionTests
         Assert.Contains(definitions, definition => definition.Id == "testimonials-three-card");
         Assert.Contains(definitions, definition => definition.Id == "faq-stacked");
         Assert.Contains(definitions, definition => definition.Id == "form-contact");
+        Assert.Contains(definitions, definition => definition.Id == "landing-saas");
+        Assert.Contains(definitions, definition => definition.Id == "landing-services");
         Assert.Equal(definitions.Count, definitions.Select(item => item.Id).Distinct().Count());
         foreach (var definition in definitions)
         {
