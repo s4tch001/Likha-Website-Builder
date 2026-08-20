@@ -17,8 +17,8 @@ TypeScript to use the app.
 
 1. Download `Likha-<version>-win-x64-setup.exe`.
 2. Run the installer. This personal build is currently unsigned, so Windows may show a SmartScreen
-   warning. Only continue when the file came from this private repository and its SHA-256 matches
-   the accompanying `.sha256` file.
+   warning. Only continue when the file came from the official GitHub Release and its SHA-256
+   matches the accompanying `.sha256` file.
 3. Keep **Create a desktop shortcut** selected, then choose **Install**.
 4. Open **Likha - Website Builder** from the Desktop or Start Menu shortcut.
 
@@ -35,7 +35,10 @@ permission.
    layouts.
 5. Import images, SVGs, fonts, video, audio, or documents through the Assets panel.
 6. Save regularly. Undo and redo are available from the Edit menu and keyboard shortcuts.
-7. Use Export when the website is ready, then choose static HTML/CSS/JavaScript or React output.
+7. Choose **Preview** to open the current project in your default browser on a temporary localhost
+   address. The button changes to **Stop Preview** while it is running. Stopping Preview or closing
+   Likha shuts down the local server and cleans its temporary files.
+8. Use Export when the website is ready, then choose static HTML/CSS/JavaScript or React output.
 
 Project files and imported assets stay in the project folder you choose. Uninstalling Likha removes
 the application but does not delete those project folders.

@@ -493,7 +493,7 @@ export async function connectHost(): Promise<HostInfo | null> {
   // Announce readiness, then pull the current project.
   bridge.publish("editor.ready", {
     editor: "WebsiteBuilder",
-    version: "0.1.0",
+    version: "0.2.0",
   });
   publishHistory();
   publishClipboard();

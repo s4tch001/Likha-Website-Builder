@@ -55,6 +55,10 @@
                             <Button Style="{StaticResource RibbonButton}" Content="Save As"
                                     ToolTip="Ctrl+Shift+S" Command="{Binding Registry[file.saveAs].Command}" />
                             <Border Style="{StaticResource RibbonSeparator}" />
+                            <Button Style="{StaticResource RibbonButton}" Content="{Binding PreviewButtonText}"
+                                    ToolTip="Open or stop the localhost project preview"
+                                    Command="{Binding Registry[file.preview].Command}" />
+                            <Border Style="{StaticResource RibbonSeparator}" />
                             <Button Style="{StaticResource RibbonButton}" Content="Export HTML"
                                     ToolTip="Export a static HTML/CSS/JS site"
                                     Command="{Binding Registry[file.exportHtml].Command}" />

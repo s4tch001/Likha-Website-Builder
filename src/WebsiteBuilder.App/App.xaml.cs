@@ -84,6 +84,10 @@ public partial class App : Application
         services.AddSingleton<IFileDialogService, FileDialogService>();
         services.AddSingleton<EditorSession>();
         services.AddSingleton<AutoSaveService>();
+        services.AddSingleton<ProjectExportService>();
+        services.AddSingleton(new PreviewOptions());
+        services.AddSingleton<IPreviewBrowser, ShellPreviewBrowser>();
+        services.AddSingleton<PreviewService>();
 
         // Panel / document view models
         services.AddSingleton<ProjectExplorerViewModel>();
@@ -112,6 +116,7 @@ public partial class App : Application
 
     protected override async void OnExit(ExitEventArgs e)
     {
+        await _host.Services.GetRequiredService<PreviewService>().StopAsync().ConfigureAwait(true);
         await _host.StopAsync().ConfigureAwait(true);
         _host.Dispose();
 

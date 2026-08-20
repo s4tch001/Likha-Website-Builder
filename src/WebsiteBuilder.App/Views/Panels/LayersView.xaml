@@ -72,7 +72,9 @@
             </TreeView.ItemContainerStyle>
             <TreeView.ItemTemplate>
                 <HierarchicalDataTemplate ItemsSource="{Binding Children}">
-                    <Grid x:Name="Row" Margin="2,1">
+                    <Border x:Name="Row" Margin="2,1" Padding="4,2"
+                            Background="Transparent" CornerRadius="4">
+                    <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
@@ -80,12 +82,12 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
-                        <TextBlock Grid.Column="0" Text="&#xE8A5;" FontFamily="Segoe MDL2 Assets"
+                        <TextBlock x:Name="TypeIcon" Grid.Column="0" Text="&#xE8A5;" FontFamily="Segoe MDL2 Assets"
                                    FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"
                                    Foreground="{StaticResource App.ForegroundMuted}" />
 
                         <Grid Grid.Column="1" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding DisplayName}"
+                            <TextBlock x:Name="LayerName" Text="{Binding DisplayName}"
                                        VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                                        Foreground="{StaticResource App.Foreground}"
                                        Visibility="{Binding IsEditing, Converter={StaticResource InverseBoolToVis}}">
@@ -145,7 +147,13 @@
                             </Button.Style>
                         </Button>
                     </Grid>
+                    </Border>
                     <HierarchicalDataTemplate.Triggers>
+                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                            <Setter TargetName="Row" Property="Background" Value="#FF1D4ED8" />
+                            <Setter TargetName="LayerName" Property="Foreground" Value="#FFFFFFFF" />
+                            <Setter TargetName="TypeIcon" Property="Foreground" Value="#FFDBEAFE" />
+                        </DataTrigger>
                         <DataTrigger Binding="{Binding IsHidden}" Value="True">
                             <Setter TargetName="Row" Property="Opacity" Value="0.45" />
                         </DataTrigger>

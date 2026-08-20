@@ -4,7 +4,7 @@ The release pipeline creates both a reproducible portable package and a per-user
 installer. Build them from the repository root:
 
 ```powershell
-.\scripts\package-release.ps1 -Version 0.1.0
+.\scripts\package-release.ps1 -Version 0.2.0
 ```
 
 The script performs a clean editor install and production export, publishes the .NET desktop app,
@@ -35,9 +35,9 @@ campaign.
 
 The 2026-08-20 installer rehearsal produced:
 
-- Installer: `Likha-0.1.0-win-x64-setup.exe`
-- Installer bytes: `55,583,913`
-- Installer SHA-256: `be6952fd0e342a1a4f63143320cdf56a989f4867962435232bdfad0def85423f`
+- Installer: `Likha-0.2.0-win-x64-setup.exe`
+- Installer bytes: `55,604,928`
+- Installer SHA-256: `4d7bde1f3428be580b6c446d0b0a1691d2b2f06b32d18f5a177b3ef3cbab7cd5`
 - Install/uninstall: both returned exit code 0 and left no test payload or uninstall registration
 - Startup smoke: the installed executable remained healthy for the eight-second observation window
 - Signature: unsigned, as expected for the owner's personal build

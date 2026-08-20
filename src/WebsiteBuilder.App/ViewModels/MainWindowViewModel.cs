@@ -1,8 +1,7 @@
-using System.IO;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using WebsiteBuilder.App.Commands;
-using WebsiteBuilder.App.Models;
 using WebsiteBuilder.App.Services;
 using WebsiteBuilder.App.ViewModels.Panels;
 using WebsiteBuilder.CodeGen;
@@ -24,7 +23,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly IFileDialogService _fileDialogs;
     private readonly EditorSession _editor;
     private readonly AutoSaveService _autoSave;
-    private readonly IAssetService _assetService;
+    private readonly ProjectExportService _exporter;
+    private readonly PreviewService _preview;
+    private readonly Dispatcher _uiDispatcher = Dispatcher.CurrentDispatcher;
 
     private IShellLayout? _shellLayout;
     private IRelayCommand? _undoCommand;
@@ -44,7 +45,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         IFileDialogService fileDialogs,
         EditorSession editor,
         AutoSaveService autoSave,
-        IAssetService assetService,
+        ProjectExportService exporter,
+        PreviewService preview,
         CommandPaletteViewModel commandPalette,
         CanvasViewModel canvas,
         ProjectExplorerViewModel projectExplorer,
@@ -59,7 +61,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _fileDialogs = fileDialogs;
         _editor = editor;
         _autoSave = autoSave;
-        _assetService = assetService;
+        _exporter = exporter;
+        _preview = preview;
 
         CommandPalette = commandPalette;
         Canvas = canvas;
@@ -76,11 +79,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _editor.SelectionChanged += (_, _) => RefreshSelectionCommands();
         _editor.ClipboardChanged += (_, _) => RefreshClipboardCommands();
         _autoSave.AutoSaved += (_, message) => StatusMessage = message;
+        _preview.StateChanged += (_, _) => UpdatePreviewButton();
 
         BuildCommands();
 
         // Ensure there is always an open project so the panels and canvas have
-        // content. The initial project gets a starter layout to render.
+        // an authoritative model. New projects intentionally start with a blank page.
         if (_projects.Current is null)
         {
             var restored = false;
@@ -98,11 +102,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
             if (!restored)
             {
-                var project = _projects.New();
-                ProjectTemplates.ApplyStarter(project);
-                // Refresh dependent panels now that starter content exists.
-                ProjectExplorer.Reload();
-                Layers.Reload();
+                _projects.New();
             }
         }
         else
@@ -135,6 +135,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private string _statusMessage = "Ready";
 
+    [ObservableProperty]
+    private string _previewButtonText = "Preview";
+
     /// <summary>Called by the window once the dock layout exists so view commands can target it.</summary>
     public void AttachLayout(IShellLayout shellLayout) => _shellLayout = shellLayout;
 
@@ -145,6 +148,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _registry.Register(new AppCommand("file.open", "Open", "File", new AsyncRelayCommand(OpenProjectAsync), "Ctrl+O", "📂"));
         _registry.Register(new AppCommand("file.save", "Save", "File", new AsyncRelayCommand(SaveProjectAsync), "Ctrl+S", "💾"));
         _registry.Register(new AppCommand("file.saveAs", "Save As", "File", new AsyncRelayCommand(SaveProjectAsAsync), "Ctrl+Shift+S", "💾"));
+        _registry.Register(new AppCommand("file.preview", "Preview / Stop Preview", "File", new AsyncRelayCommand(TogglePreviewAsync), glyph: "▶"));
         _registry.Register(new AppCommand("file.exportHtml", "Export HTML", "File", new AsyncRelayCommand(ExportStaticHtmlAsync), glyph: "⬇"));
         _registry.Register(new AppCommand("file.exportReact", "Export Next.js", "File", new AsyncRelayCommand(ExportReactAsync), glyph: "⚛"));
 
@@ -208,6 +212,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             return;
         }
 
+        await StopPreviewAsync().ConfigureAwait(true);
         _projects.New();
         StatusMessage = "Created new project.";
     }
@@ -227,6 +232,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         try
         {
+            await StopPreviewAsync().ConfigureAwait(true);
             await _projects.OpenAsync(path).ConfigureAwait(true);
             StatusMessage = $"Opened {path}";
         }
@@ -310,6 +316,42 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     private Task ExportReactAsync() => ExportAsync(new ReactCodeGenerator(), "Next.js project");
 
+    private async Task TogglePreviewAsync()
+    {
+        try
+        {
+            if (_preview.IsRunning)
+            {
+                await _preview.StopAsync().ConfigureAwait(true);
+                StatusMessage = "Preview stopped.";
+            }
+            else
+            {
+                var url = await _preview.StartAsync().ConfigureAwait(true);
+                StatusMessage = $"Preview running at {url}";
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Preview failed: {ex.Message}";
+        }
+    }
+
+    public Task StopPreviewAsync() => _preview.StopAsync();
+
+    private void UpdatePreviewButton()
+    {
+        void Update() => PreviewButtonText = _preview.IsRunning ? "Stop Preview" : "Preview";
+        if (_uiDispatcher.CheckAccess())
+        {
+            Update();
+        }
+        else
+        {
+            _uiDispatcher.BeginInvoke(Update);
+        }
+    }
+
     private async Task ExportAsync(ICodeGenerator generator, string what)
     {
         if (_projects.Current is null)
@@ -326,68 +368,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         try
         {
-            var files = generator.Generate(_projects.Current);
-            var targets = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var generatedTargets = new List<(GeneratedFile File, string FullPath)>();
-            foreach (var file in files)
-            {
-                var fullPath = ExportPathPolicy.ResolveContainedPath(folder, file.RelativePath);
-                if (!targets.Add(fullPath))
-                {
-                    throw new InvalidDataException($"The generator produced duplicate output '{file.RelativePath}'.");
-                }
-                generatedTargets.Add((file, fullPath));
-            }
-
-            var assetCopies = new List<(string SourcePath, string OutputPath)>();
-            if (_projects.ProjectDirectory is not { } projectDirectory)
-            {
-                if (_projects.Current.Assets.Count > 0)
-                {
-                    throw new InvalidOperationException("Save the project before exporting managed assets.");
-                }
-            }
-            else
-            {
-                var assetRoot = generator.Target == CodeGenTarget.React ? "public/Assets" : "Assets";
-                foreach (var asset in _projects.Current.Assets)
-                {
-                    if (!_assetService.TryGetFullPath(projectDirectory, asset, out var sourcePath)
-                        || !File.Exists(sourcePath))
-                    {
-                        throw new FileNotFoundException($"Managed asset '{asset.Name}' is unavailable.");
-                    }
-
-                    var outputPath = ExportPathPolicy.ResolveContainedPath(
-                        folder,
-                        $"{assetRoot}/{asset.StoredFileName}");
-                    if (!targets.Add(outputPath))
-                    {
-                        throw new InvalidDataException($"Duplicate asset output '{asset.StoredFileName}'.");
-                    }
-
-                    assetCopies.Add((sourcePath, outputPath));
-                }
-            }
-
-            // Resolve and validate the complete export plan before touching the destination.
-            foreach (var (file, fullPath) in generatedTargets)
-            {
-                await AtomicFileWriter.WriteAllTextAsync(
-                    fullPath,
-                    file.Contents,
-                    createBackup: false).ConfigureAwait(true);
-            }
-
-            foreach (var (sourcePath, outputPath) in assetCopies)
-            {
-                await AtomicFileWriter.CopyFileAsync(
-                    sourcePath,
-                    outputPath,
-                    createBackup: false).ConfigureAwait(true);
-            }
-
-            StatusMessage = $"Exported {files.Count} generated files and {_projects.Current.Assets.Count} assets to {folder}";
+            var result = await _exporter.ExportAsync(
+                generator,
+                _projects.Current,
+                folder,
+                _projects.ProjectDirectory).ConfigureAwait(true);
+            StatusMessage = $"Exported {result.GeneratedFileCount} generated files and {result.AssetCount} assets to {folder}";
         }
         catch (Exception ex)
         {
@@ -395,8 +381,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
     }
 
-    private void ShowAbout() =>
-        StatusMessage = $"{AppName} 0.1.0 — visual website builder.";
+    private void ShowAbout()
+    {
+        var version = typeof(MainWindowViewModel).Assembly.GetName().Version?.ToString(3) ?? "unknown";
+        StatusMessage = $"{AppName} {version} — visual website builder.";
+    }
 
     private void TogglePanel(string contentId) => _shellLayout?.TogglePanel(contentId);
 

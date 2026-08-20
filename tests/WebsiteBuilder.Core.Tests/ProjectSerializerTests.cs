@@ -19,6 +19,7 @@ public class ProjectSerializerTests
         Assert.Equal("My Site", project.Name);
         Assert.Single(project.Pages);
         Assert.Equal("Home", project.Pages[0].Name);
+        Assert.Empty(project.Pages[0].Root.Children);
         Assert.Equal(Breakpoint.Defaults.Count, project.Breakpoints.Count);
         Assert.Contains(project.Breakpoints, b => b.IsBase);
     }

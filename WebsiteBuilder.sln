@@ -19,6 +19,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebsiteBuilder.Core.Tests",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebsiteBuilder.CodeGen.Tests", "tests\WebsiteBuilder.CodeGen.Tests\WebsiteBuilder.CodeGen.Tests.csproj", "{1A2B3C4D-0021-4000-8000-000000000001}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebsiteBuilder.App.Tests", "tests\WebsiteBuilder.App.Tests\WebsiteBuilder.App.Tests.csproj", "{1A2B3C4D-0022-4000-8000-000000000001}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -49,6 +51,10 @@ Global
 		{1A2B3C4D-0021-4000-8000-000000000001}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1A2B3C4D-0021-4000-8000-000000000001}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1A2B3C4D-0021-4000-8000-000000000001}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1A2B3C4D-0022-4000-8000-000000000001}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1A2B3C4D-0022-4000-8000-000000000001}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1A2B3C4D-0022-4000-8000-000000000001}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1A2B3C4D-0022-4000-8000-000000000001}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{1A2B3C4D-0010-4000-8000-000000000001} = {1A2B3C4D-0001-4000-8000-000000000001}
@@ -57,5 +63,6 @@ Global
 		{1A2B3C4D-0013-4000-8000-000000000001} = {1A2B3C4D-0001-4000-8000-000000000001}
 		{1A2B3C4D-0020-4000-8000-000000000001} = {1A2B3C4D-0002-4000-8000-000000000001}
 		{1A2B3C4D-0021-4000-8000-000000000001} = {1A2B3C4D-0002-4000-8000-000000000001}
+		{1A2B3C4D-0022-4000-8000-000000000001} = {1A2B3C4D-0002-4000-8000-000000000001}
 	EndGlobalSection
 EndGlobal

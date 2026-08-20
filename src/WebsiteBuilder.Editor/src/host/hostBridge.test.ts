@@ -107,7 +107,7 @@ describe("connectHost", () => {
       if (method === "host.getInfo") {
         return Promise.resolve({
           name: "Likha",
-          version: "0.1.0",
+          version: "0.2.0",
           platform: "Windows",
         });
       }
@@ -117,7 +117,7 @@ describe("connectHost", () => {
     const { connectHost } = await import("./hostBridge");
     await expect(connectHost()).resolves.toEqual({
       name: "Likha",
-      version: "0.1.0",
+      version: "0.2.0",
       platform: "Windows",
     });
     expect(useEditorStore.getState()).toMatchObject({
@@ -127,7 +127,7 @@ describe("connectHost", () => {
     });
     expect(harness.published).toContainEqual({
       method: "editor.ready",
-      payload: { editor: "WebsiteBuilder", version: "0.1.0" },
+      payload: { editor: "WebsiteBuilder", version: "0.2.0" },
     });
 
     expect(

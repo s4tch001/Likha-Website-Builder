@@ -218,7 +218,8 @@ public sealed class EditorSession
         // editor → host request: returns metadata about the host application.
         bridge.RegisterHandler("host.getInfo", (_, _) =>
         {
-            var info = new HostInfo("Likha", "0.1.0", "WPF / WebView2");
+            var version = typeof(EditorSession).Assembly.GetName().Version?.ToString(3) ?? "unknown";
+            var info = new HostInfo("Likha", version, "WPF / WebView2");
             return Task.FromResult<string?>(JsonSerializer.Serialize(info, ProjectSerializer.Options));
         });
 
