@@ -144,6 +144,12 @@ describe("connectHost", () => {
     emit("editor.setZoom", { zoom: 125 });
     emit("editor.setBreakpoint", { id: "mobile" });
     emit("editor.select", { ids: ["a", "b"] });
+    emit("editor.copy");
+    expect(useEditorStore.getState().canPaste).toBe(true);
+    expect(harness.published).toContainEqual({
+      method: "editor.clipboardChanged",
+      payload: { canPaste: true },
+    });
     emit("editor.align", { mode: "right" });
     emit("editor.rename", { id: "a", name: "Hero" });
     emit("editor.setGeometry", { id: "a", width: 220 });

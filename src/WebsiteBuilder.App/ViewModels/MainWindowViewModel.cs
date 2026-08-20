@@ -31,6 +31,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private IRelayCommand? _redoCommand;
     private IRelayCommand? _deleteCommand;
     private IRelayCommand? _duplicateCommand;
+    private IRelayCommand? _copyCommand;
+    private IRelayCommand? _pasteCommand;
     private readonly List<IRelayCommand> _arrangeCommands = new();
 
     private const string OpenFilter =
@@ -72,6 +74,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _projects.DirtyChanged += (_, _) => RefreshTitle();
         _editor.HistoryChanged += (_, _) => RefreshUndoRedo();
         _editor.SelectionChanged += (_, _) => RefreshSelectionCommands();
+        _editor.ClipboardChanged += (_, _) => RefreshClipboardCommands();
         _autoSave.AutoSaved += (_, message) => StatusMessage = message;
 
         BuildCommands();
@@ -157,9 +160,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _registry.Register(new AppCommand("edit.duplicate", "Duplicate", "Edit", _duplicateCommand, "Ctrl+D", "⧉"));
         _registry.Register(new AppCommand("edit.delete", "Delete", "Edit", _deleteCommand, "Del", "🗑"));
 
-        // Copy / Paste require a clipboard model (a later phase); disabled for now.
-        _registry.Register(new AppCommand("edit.copy", "Copy", "Edit", new RelayCommand(() => { }, () => false), "Ctrl+C", "⧉"));
-        _registry.Register(new AppCommand("edit.paste", "Paste", "Edit", new RelayCommand(() => { }, () => false), "Ctrl+V", "📋"));
+        _copyCommand = new RelayCommand(_editor.Copy, () => _editor.HasSelection);
+        _pasteCommand = new RelayCommand(_editor.Paste, () => _editor.CanPaste);
+        _registry.Register(new AppCommand("edit.copy", "Copy", "Edit", _copyCommand, "Ctrl+C", "⧉"));
+        _registry.Register(new AppCommand("edit.paste", "Paste", "Edit", _pasteCommand, "Ctrl+V", "📋"));
 
         // View — panel toggles (delegated to the window's dock layout)
         _registry.Register(AppCommand.Create("view.projectExplorer", "Project", "View", () => TogglePanel(PanelIds.ProjectExplorer), glyph: "🗂"));
@@ -412,6 +416,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     private void RefreshSelectionCommands()
     {
+        _copyCommand?.NotifyCanExecuteChanged();
         _deleteCommand?.NotifyCanExecuteChanged();
         _duplicateCommand?.NotifyCanExecuteChanged();
         foreach (var command in _arrangeCommands)
@@ -419,6 +424,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
             command.NotifyCanExecuteChanged();
         }
     }
+
+    private void RefreshClipboardCommands() => _pasteCommand?.NotifyCanExecuteChanged();
 
     private static string BuildTitle(Project? project, bool dirty) =>
         project is null ? AppName : $"{(dirty ? "● " : string.Empty)}{project.Name} — {AppName}";

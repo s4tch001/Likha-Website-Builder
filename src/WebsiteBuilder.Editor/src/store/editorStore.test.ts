@@ -277,6 +277,41 @@ describe("editorStore", () => {
     expect(findNode(edited, "a")!.styles.color).toBe("red");
   });
 
+  it("copies and pastes a fresh-id subtree in one mutation", () => {
+    const nested = node("nested", 5, 6, 20, 20);
+    const project = makeProject([
+      { ...node("container", 10, 20, 100, 100), children: [nested] },
+    ]);
+    useEditorStore.getState().setProject(project);
+    useEditorStore.getState().selectElement("container");
+    useEditorStore.getState().copySelection();
+    const beforeRevision = useEditorStore.getState().revision;
+
+    useEditorStore.getState().pasteClipboard();
+
+    const state = useEditorStore.getState();
+    const pasted = state.project!.pages[0].root.children[1];
+    expect(pasted.id).not.toBe("container");
+    expect(pasted.children[0].id).not.toBe("nested");
+    expect(pasted).toMatchObject({ x: 26, y: 36 });
+    expect(state.revision).toBe(beforeRevision + 1);
+    expect(state.selectedIds).toEqual([pasted.id]);
+  });
+
+  it("cuts through copy plus one delete and clears clipboard on project load", () => {
+    useEditorStore.getState().selectElement("a");
+    useEditorStore.getState().cutSelection();
+    expect(findNode(useEditorStore.getState().project!, "a")).toBeNull();
+    expect(useEditorStore.getState().canPaste).toBe(true);
+
+    useEditorStore.getState().setProject(makeProject([]), 10);
+    expect(useEditorStore.getState().canPaste).toBe(false);
+    useEditorStore.getState().pasteClipboard();
+    expect(useEditorStore.getState().project!.pages[0].root.children).toEqual(
+      [],
+    );
+  });
+
   it("clears redo on a new mutation and clears all history on host project load", () => {
     useEditorStore.getState().setStyle("a", "color", "red");
     useEditorStore.getState().undo();

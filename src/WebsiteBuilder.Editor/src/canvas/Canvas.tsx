@@ -83,6 +83,11 @@ interface ElementDrag {
   exclude: Set<string>;
 }
 
+interface CanvasContextMenuState {
+  left: number;
+  top: number;
+}
+
 /**
  * The infinite design canvas. Renders the active page from the store and adds:
  *  - ctrl+wheel zoom-to-cursor, wheel/space-drag/middle-mouse panning;
@@ -145,6 +150,9 @@ export default function Canvas() {
   const [dragIds, setDragIds] = useState<string[]>([]);
   const [dragOffset, setDragOffset] = useState({ dx: 0, dy: 0 });
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<CanvasContextMenuState | null>(
+    null,
+  );
 
   // Marquee (rubber-band) selection, tracked in screen coords relative to the clip.
   const marquee = useRef<{
@@ -280,6 +288,30 @@ export default function Canvas() {
 
       const store = useEditorStore.getState();
 
+      if ((e.ctrlKey || e.metaKey) && (e.key === "c" || e.key === "C")) {
+        if (store.selectedIds.length > 0) {
+          e.preventDefault();
+          store.copySelection();
+        }
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && (e.key === "x" || e.key === "X")) {
+        if (store.selectedIds.length > 0) {
+          e.preventDefault();
+          store.cutSelection();
+        }
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && (e.key === "v" || e.key === "V")) {
+        if (store.canPaste) {
+          e.preventDefault();
+          store.pasteClipboard();
+        }
+        return;
+      }
+
       if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z")) {
         e.preventDefault();
         if (e.shiftKey) {
@@ -354,6 +386,20 @@ export default function Canvas() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  useEffect(() => {
+    if (!contextMenu) return;
+    const close = (event: KeyboardEvent | PointerEvent) => {
+      if (event instanceof KeyboardEvent && event.key !== "Escape") return;
+      setContextMenu(null);
+    };
+    window.addEventListener("pointerdown", close);
+    window.addEventListener("keydown", close);
+    return () => {
+      window.removeEventListener("pointerdown", close);
+      window.removeEventListener("keydown", close);
+    };
+  }, [contextMenu]);
+
   // Native wheel listener so we can preventDefault (React's is passive).
   useEffect(() => {
     const clip = clipRef.current;
@@ -389,6 +435,7 @@ export default function Canvas() {
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent) => {
+      setContextMenu(null);
       // Panning takes priority (space-drag or middle mouse).
       if (e.button === 1 || (e.button === 0 && spaceDown)) {
         e.preventDefault();
@@ -476,6 +523,27 @@ export default function Canvas() {
     },
     [spaceDown],
   );
+
+  const onContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    const target = (e.target as HTMLElement).closest(
+      "[data-element-id]",
+    ) as HTMLElement | null;
+    const id =
+      target?.dataset.root === "true" ? null : target?.dataset.elementId;
+    const state = useEditorStore.getState();
+    if (id && !state.selectedIds.includes(id)) state.selectElement(id);
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setContextMenu({
+      left: Math.min(e.clientX - rect.left, Math.max(0, rect.width - 180)),
+      top: Math.min(e.clientY - rect.top, Math.max(0, rect.height - 250)),
+    });
+  }, []);
+
+  const runContextAction = useCallback((action: () => void) => {
+    action();
+    setContextMenu(null);
+  }, []);
 
   const onPointerMove = useCallback(
     (e: React.PointerEvent) => {
@@ -786,6 +854,7 @@ export default function Canvas() {
         onPointerMove={onPointerMove}
         onPointerUp={endInteraction}
         onPointerCancel={endInteraction}
+        onContextMenu={onContextMenu}
         onDragOver={onDragOver}
         onDrop={onDrop}
       >
@@ -820,6 +889,76 @@ export default function Canvas() {
         )}
 
         <SelectionOverlay />
+
+        {contextMenu ? (
+          <div
+            className="canvas-context-menu"
+            role="menu"
+            aria-label="Canvas actions"
+            style={{ left: contextMenu.left, top: contextMenu.top }}
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              role="menuitem"
+              disabled={selectedIds.length === 0}
+              onClick={() =>
+                runContextAction(() => useEditorStore.getState().cutSelection())
+              }
+            >
+              Cut <kbd>Ctrl+X</kbd>
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              disabled={selectedIds.length === 0}
+              onClick={() =>
+                runContextAction(() =>
+                  useEditorStore.getState().copySelection(),
+                )
+              }
+            >
+              Copy <kbd>Ctrl+C</kbd>
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              disabled={!useEditorStore.getState().canPaste}
+              onClick={() =>
+                runContextAction(() =>
+                  useEditorStore.getState().pasteClipboard(),
+                )
+              }
+            >
+              Paste <kbd>Ctrl+V</kbd>
+            </button>
+            <div className="context-menu-separator" role="separator" />
+            <button
+              type="button"
+              role="menuitem"
+              disabled={selectedIds.length === 0}
+              onClick={() =>
+                runContextAction(() =>
+                  useEditorStore.getState().duplicateSelection(),
+                )
+              }
+            >
+              Duplicate <kbd>Ctrl+D</kbd>
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              disabled={selectedIds.length === 0}
+              onClick={() =>
+                runContextAction(() =>
+                  useEditorStore.getState().deleteSelection(),
+                )
+              }
+            >
+              Delete <kbd>Del</kbd>
+            </button>
+          </div>
+        ) : null}
 
         {marqueeRect ? (
           <div

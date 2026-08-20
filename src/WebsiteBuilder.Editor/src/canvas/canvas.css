@@ -237,3 +237,52 @@
   right: 0;
   height: 1px;
 }
+
+.canvas-context-menu {
+  position: absolute;
+  z-index: 200;
+  display: grid;
+  width: 180px;
+  padding: 5px;
+  border: 1px solid #4a4a55;
+  border-radius: 8px;
+  background: #24242a;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+}
+
+.canvas-context-menu button {
+  display: flex;
+  min-height: 30px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #ececf1;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.canvas-context-menu button:hover:not(:disabled),
+.canvas-context-menu button:focus-visible {
+  background: #34343c;
+}
+
+.canvas-context-menu button:disabled {
+  color: #777782;
+  cursor: default;
+}
+
+.canvas-context-menu kbd {
+  color: #aaaab4;
+  font-family: inherit;
+  font-size: 10px;
+}
+
+.context-menu-separator {
+  height: 1px;
+  margin: 4px 3px;
+  background: #41414a;
+}

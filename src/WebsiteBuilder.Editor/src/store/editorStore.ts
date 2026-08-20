@@ -23,6 +23,8 @@ const HISTORY_LIMIT = 50;
 const undoHistory: Project[] = [];
 const redoHistory: Project[] = [];
 let applyingHistory = false;
+let elementClipboard: ElementNode[] = [];
+let clipboardPasteCount = 0;
 
 function loadCanvasBackground(): string {
   if (typeof window === "undefined") {
@@ -332,12 +334,16 @@ interface EditorState {
   /** Bounded editor-side project history availability. */
   canUndo: boolean;
   canRedo: boolean;
+  canPaste: boolean;
 
   setReady: (ready: boolean) => void;
   setProject: (project: Project, hostRevision?: number) => void;
   acknowledgeHostRevision: (hostRevision: number) => void;
   undo: () => void;
   redo: () => void;
+  copySelection: () => void;
+  cutSelection: () => void;
+  pasteClipboard: () => void;
   setActivePage: (pageId: string) => void;
   setBreakpoint: (breakpointId: string) => void;
   setZoom: (zoom: number) => void;
@@ -446,11 +452,14 @@ export const useEditorStore = create<EditorState>((set) => ({
   hostRevision: 0,
   canUndo: false,
   canRedo: false,
+  canPaste: false,
 
   setReady: (ready) => set({ ready }),
 
   setProject: (project, hostRevision = 0) =>
     set((state) => {
+      elementClipboard = [];
+      clipboardPasteCount = 0;
       const firstPage: Page | undefined = project.pages[0];
       const base: BreakpointDef | undefined =
         project.breakpoints.find((b) => b.isBase) ?? project.breakpoints[0];
@@ -472,12 +481,59 @@ export const useEditorStore = create<EditorState>((set) => ({
         selectedIds: state.selectedIds.filter(
           (id) => findNode(project, id) !== null,
         ),
+        canPaste: false,
       };
     }),
 
   acknowledgeHostRevision: (hostRevision) => set({ hostRevision }),
   undo: () => applyHistory("undo"),
   redo: () => applyHistory("redo"),
+  copySelection: () =>
+    set((state) => {
+      if (!state.project || state.selectedIds.length === 0) return {};
+      const topLevelIds = state.selectedIds.filter(
+        (id) =>
+          !state.selectedIds.some(
+            (other) =>
+              other !== id && isSelfOrDescendant(state.project!, other, id),
+          ),
+      );
+      elementClipboard = topLevelIds
+        .map((id) => findNode(state.project!, id))
+        .filter((node): node is ElementNode => node !== null)
+        .map((node) => structuredClone(node) as ElementNode);
+      clipboardPasteCount = 0;
+      return { canPaste: elementClipboard.length > 0 };
+    }),
+  cutSelection: () => {
+    const state = useEditorStore.getState();
+    state.copySelection();
+    useEditorStore.getState().deleteSelection();
+  },
+  pasteClipboard: () =>
+    set((state) => {
+      if (!state.project || elementClipboard.length === 0) return {};
+      const targetId = activeRootId(state);
+      if (!targetId) return {};
+      clipboardPasteCount += 1;
+      const offset = clipboardPasteCount * 16;
+      const pasted = elementClipboard.map((source) => {
+        const node = structuredClone(source) as ElementNode;
+        reassignIds(node);
+        node.x = Math.round(node.x + offset);
+        node.y = Math.round(node.y + offset);
+        return node;
+      });
+      const project = updateProjectNode(state.project, targetId, (parent) => {
+        parent.children.push(...pasted);
+      });
+      if (!project) return {};
+      return {
+        project,
+        revision: state.revision + 1,
+        selectedIds: pasted.map((node) => node.id),
+      };
+    }),
 
   setActivePage: (pageId) => set({ activePageId: pageId }),
   setBreakpoint: (breakpointId) => set({ breakpointId }),

@@ -192,7 +192,7 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
 
 ---
 
-## 5. ✅ DONE (Phases 1–16 + migrations M1–M3f; 0/0 build, 78 C# + 59 editor tests)
+## 5. ✅ DONE (Phases 1–16 + 17a–17b + migrations M1–M3f; 0/0 build, 78 C# + 61 editor tests)
 
 - **Phase 1 — Scaffolding.** Solution, 5 src + 2 test projects, Project JSON model
   (ElementNode/Page/Project/Breakpoint), ProjectSerializer, and service interfaces.
@@ -355,6 +355,14 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
   Agentic Browsing (29 passed, 0 failed). This automated result does not replace manual NVDA,
   High Contrast, 200% scaling, touch, and packaged-WebView testing; limits are documented in
   `docs/quality/phase17-accessibility.md`.
+- **Phase 17b — clipboard and context-menu interactions (2026-08-20).** Added a project-scoped,
+  application-local element clipboard with fresh-id subtree paste, repeat offsets, Ctrl+C/X/V,
+  and one canonical history mutation per cut/delete or paste. Clipboard state is cleared at
+  authoritative project-load boundaries so managed asset references cannot leak across projects.
+  The WPF Copy/Paste ribbon commands now mirror editor selection/clipboard availability over the
+  bridge. A named keyboard-focusable canvas context menu provides Cut/Copy/Paste/Duplicate/Delete
+  pointer actions. Tests cover fresh IDs, subtree copying, history/revision behavior, project reset,
+  and bridge availability events; 61 editor and all 78 C# tests pass.
 - **Migration M3a — repository safety baseline (2026-08-20).** Initialized Git on `main`,
   normalized repository text to LF through `.gitattributes` + `.editorconfig`, expanded ignore
   rules for generated build/typecheck/coverage output, local agent settings, environment files,
@@ -405,13 +413,14 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
   updates/sec with stable subscriptions, viewport culling/spatial indexes, immutable path copies,
   and structurally shared history. Preserve the measured budgets in Phase 17; this is a 27.3× gain,
   not a claim of locked 60 fps at 10k.
-- **Phase 17 — Final polish (17a accessibility complete).** Remaining: theming, animations, context menus, tabs,
+- **Phase 17 — Final polish (17a–17b complete).** Remaining: broader theming, animations, tabs,
   packaging/installer, production hardening. (Optionally rename the actual exe to Likha.exe
   here — currently AssemblyName=WebsiteBuilder is kept to avoid breaking data-folder/layout
   paths and tooling.)
 
 ### Known small TODOs / deferrals
-- Copy/Paste ribbon commands are intentionally DISABLED (need a clipboard model — pick a phase).
+- Copy/Paste is implemented with a project-scoped internal element clipboard; it intentionally does
+  not deserialize arbitrary OS clipboard JSON.
 - `transform` is not an inspector field (rotation covers the common case; advanced transform
   goes via Custom CSS). Revisit if needed.
 - Group-resize (resizing a multi-selection bbox) not implemented — handles show for single

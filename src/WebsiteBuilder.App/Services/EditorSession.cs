@@ -90,6 +90,10 @@ public sealed class EditorSession
 
     public event EventHandler? HistoryChanged;
 
+    public bool CanPaste { get; private set; }
+
+    public event EventHandler? ClipboardChanged;
+
     /// <summary>The live bridge to the editor, or null until <see cref="AttachAsync"/> completes.</summary>
     public IEditorBridge? Bridge => _bridge;
 
@@ -286,6 +290,10 @@ public sealed class EditorSession
                 OnHistoryChanged(e.PayloadJson);
                 break;
 
+            case "editor.clipboardChanged":
+                OnClipboardChanged(e.PayloadJson);
+                break;
+
             case "editor.rotateResult":
                 if (!string.IsNullOrEmpty(e.PayloadJson))
                 {
@@ -413,6 +421,12 @@ public sealed class EditorSession
 
     public void Redo() => _ = _bridge?.PublishAsync("editor.redo", new { });
 
+    public void Copy() => _ = _bridge?.PublishAsync("editor.copy", new { });
+
+    public void Cut() => _ = _bridge?.PublishAsync("editor.cut", new { });
+
+    public void Paste() => _ = _bridge?.PublishAsync("editor.paste", new { });
+
     /// <summary>Aligns/distributes the current selection (mode = left/hcenter/right/top/vmiddle/bottom/distH/distV).</summary>
     public void Align(string mode) => _ = _bridge?.PublishAsync("editor.align", new { mode });
 
@@ -471,6 +485,25 @@ public sealed class EditorSession
         catch (JsonException)
         {
             // Ignore malformed diagnostics/state events from the embedded editor.
+        }
+    }
+
+    private void OnClipboardChanged(string? payloadJson)
+    {
+        if (string.IsNullOrEmpty(payloadJson))
+        {
+            return;
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(payloadJson);
+            CanPaste = doc.RootElement.TryGetProperty("canPaste", out var paste) && paste.GetBoolean();
+            ClipboardChanged?.Invoke(this, EventArgs.Empty);
+        }
+        catch (JsonException)
+        {
+            // Ignore malformed editor state events.
         }
     }
 

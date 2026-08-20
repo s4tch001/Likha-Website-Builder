@@ -227,6 +227,9 @@ export async function connectHost(): Promise<HostInfo | null> {
   });
   bridge.on("editor.undo", () => useEditorStore.getState().undo());
   bridge.on("editor.redo", () => useEditorStore.getState().redo());
+  bridge.on("editor.copy", () => useEditorStore.getState().copySelection());
+  bridge.on("editor.cut", () => useEditorStore.getState().cutSelection());
+  bridge.on("editor.paste", () => useEditorStore.getState().pasteClipboard());
 
   // Headless verification: drive a move + reparent and report the outcome.
   bridge.on("editor.runSelfTest", () => {
@@ -388,6 +391,19 @@ export async function connectHost(): Promise<HostInfo | null> {
     }
   });
 
+  let lastCanPaste = store.canPaste;
+  const publishClipboard = () => {
+    bridge.publish("editor.clipboardChanged", {
+      canPaste: useEditorStore.getState().canPaste,
+    });
+  };
+  useEditorStore.subscribe((state) => {
+    if (state.canPaste !== lastCanPaste) {
+      lastCanPaste = state.canPaste;
+      publishClipboard();
+    }
+  });
+
   let lastCanUndo = store.canUndo;
   let lastCanRedo = store.canRedo;
   const publishHistory = () => {
@@ -480,6 +496,7 @@ export async function connectHost(): Promise<HostInfo | null> {
     version: "0.1.0",
   });
   publishHistory();
+  publishClipboard();
 
   // The host's request handler returns the project as a JSON object payload.
   const snapshot = readProjectEnvelope(
