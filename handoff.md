@@ -192,7 +192,7 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
 
 ---
 
-## 5. ✅ DONE (Phases 1–14 + 15a–15b + migrations M1–M3f; 0/0 build, 78 C# + 47 editor tests)
+## 5. ✅ DONE (Phases 1–15 + migrations M1–M3f; 0/0 build, 78 C# + 47 editor tests)
 
 - **Phase 1 — Scaffolding.** Solution, 5 src + 2 test projects, Project JSON model
   (ElementNode/Page/Project/Breakpoint), ProjectSerializer, and service interfaces.
@@ -308,6 +308,12 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
   raises command-state notifications, and the Edit ribbon/Ctrl command bindings now invoke the
   editor history instead of the unused empty host stack. Bridge integration tests cover the
   availability event and host-driven undo/redo round trip.
+- **Phase 15c — history boundaries and final integration (2026-08-20).** Added WPF
+  Ctrl+Shift+Z, removed the unused host history service from runtime DI, and verified that
+  asset/component canvas insertions enter editor history. Authoritative host reloads—including
+  filesystem asset import/delete—clear editor history by design, preventing metadata snapshots
+  from being restored without their files. Full Release/Next production gates pass; editor
+  coverage is now 70.32% lines.
 - **Migration M3a — repository safety baseline (2026-08-20).** Initialized Git on `main`,
   normalized repository text to LF through `.gitattributes` + `.editorconfig`, expanded ignore
   rules for generated build/typecheck/coverage output, local agent settings, environment files,
@@ -354,9 +360,6 @@ window icon via `SendMessage(hwnd, WM_GETICON=0x7F, ICON_BIG=1, 0)`.
 
 ## 6. ⛔ NOT DONE — Phase 14 onward
 
-- **Phase 15 — Undo/Redo integration (15a–15b complete).** Remaining: 15c finalize host-originated mutation
-  boundaries/status and integration coverage. Asset filesystem import/delete remains a separate
-  transactional concern: history must never restore metadata without the corresponding file.
 - **Phase 16 — Performance.** Virtualized rendering, lazy loading, efficient diffing —
   target 10k+ elements, 60fps drag. (Current: full-project structuredClone per mutation +
   debounced full-project push. Fine for now, optimize here.)
@@ -391,7 +394,7 @@ rule). Today's date context in prior sessions was 2026-06; convert relative date
 
 ## 8. Suggested first action in the new session
 
-Continue with **Phase 15c — mutation boundaries, status, and final undo integration coverage**. The user explicitly
+Continue with **Phase 16a — performance benchmark harness and measured baseline**. The user explicitly
 asked Codex to continue through later phases/sub-phases and to update this handoff after every
 completed sub-phase, stopping work when remaining Codex usage reaches 10%. Preserve the Phase
 13 canonical-asset boundary plus the M3 revision, validation, persistence, coverage, and

@@ -25,6 +25,7 @@
         <KeyBinding Modifiers="Control" Key="S" Command="{Binding Registry[file.save].Command}" />
         <KeyBinding Modifiers="Control+Shift" Key="S" Command="{Binding Registry[file.saveAs].Command}" />
         <KeyBinding Modifiers="Control" Key="Z" Command="{Binding Registry[edit.undo].Command}" />
+        <KeyBinding Modifiers="Control+Shift" Key="Z" Command="{Binding Registry[edit.redo].Command}" />
         <KeyBinding Modifiers="Control" Key="Y" Command="{Binding Registry[edit.redo].Command}" />
         <KeyBinding Modifiers="Control+Shift" Key="P" Command="{Binding CommandPalette.ToggleCommand}" />
         <KeyBinding Modifiers="Control" Key="D0" Command="{Binding Registry[view.zoomReset].Command}" />

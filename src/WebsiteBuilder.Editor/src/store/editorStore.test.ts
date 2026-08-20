@@ -129,6 +129,7 @@ describe("editorStore", () => {
     expect(children[0].attributes.src).toBe("Assets/img.png");
     expect(children[1].attributes.controls).toBe("true");
     expect(children[2].attributes.download).toBe("Guide.pdf");
+    expect(useEditorStore.getState().canUndo).toBe(true);
   });
 
   it("rejects asset metadata that does not exactly match the current project", () => {
@@ -194,6 +195,7 @@ describe("editorStore", () => {
     expect(inserted.y).toBe(89);
     expect(state.selectedIds).toEqual([inserted.id]);
     expect(state.revision).toBe(beforeRevision + 1);
+    expect(state.canUndo).toBe(true);
   });
 
   it("rejects malformed or asset-dependent component trees", () => {

@@ -76,7 +76,6 @@ public partial class App : Application
     {
         // Core services
         services.AddSingleton<IProjectService, ProjectService>();
-        services.AddSingleton<IUndoRedoService, UndoRedoService>();
         services.AddSingleton(new AssetImportOptions());
         services.AddSingleton<IAssetService, AssetService>();
 
