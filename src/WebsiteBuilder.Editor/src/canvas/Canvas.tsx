@@ -1,5 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { frameWidthFor } from "../model/types";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  frameWidthFor,
+  type BreakpointDef,
+  type ProjectAsset,
+} from "../model/types";
 import { DRAG_MIME } from "../palette/catalog";
 import { ASSET_DRAG_MIME, editorFontFaceCss } from "../model/assetElements";
 import {
@@ -9,6 +20,7 @@ import {
 import {
   collectElementRects,
   getAbsolutePosition,
+  findNode,
   findParent,
   MAX_ZOOM,
   MIN_ZOOM,
@@ -22,6 +34,7 @@ import ElementRenderer from "./ElementRenderer";
 import Ruler from "./Rulers";
 import SelectionOverlay from "./SelectionOverlay";
 import { useElementSize } from "./useElementSize";
+import { createEditorAssetUrlMap } from "./renderOptimization";
 
 const RULER_SIZE = 24;
 const FRAME_MIN_HEIGHT = 1000;
@@ -41,6 +54,10 @@ const CONTAINER_TYPES = new Set([
 
 function clamp(zoom: number): number {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom));
+}
+
+function renderedElement(id: string): HTMLElement | null {
+  return document.getElementById(`wb-element-${id}`);
 }
 
 interface ElementDrag {
@@ -86,6 +103,28 @@ export default function Canvas() {
   const insertAsset = useEditorStore((s) => s.insertAsset);
   const insertComponent = useEditorStore((s) => s.insertComponent);
 
+  // `structuredClone` currently replaces these arrays on every mutation. Keep
+  // the context value stable while their small, render-relevant metadata is
+  // unchanged so memoized descendants are not invalidated through Context.
+  const breakpointSignature = JSON.stringify(breakpoints ?? []);
+  const stableBreakpoints = useMemo(
+    () => JSON.parse(breakpointSignature) as BreakpointDef[],
+    [breakpointSignature],
+  );
+  const assetSignature = JSON.stringify(project?.assets ?? []);
+  const assetUrls = useMemo(
+    () => createEditorAssetUrlMap(JSON.parse(assetSignature) as ProjectAsset[]),
+    [assetSignature],
+  );
+  const renderContext = useMemo(
+    () => ({
+      breakpoints: stableBreakpoints,
+      breakpointId,
+      assetUrls,
+    }),
+    [assetUrls, breakpointId, stableBreakpoints],
+  );
+
   const clipRef = useRef<HTMLDivElement>(null);
   const { width, height } = useElementSize(clipRef);
 
@@ -121,6 +160,60 @@ export default function Canvas() {
     x: null,
     y: null,
   });
+
+  const previousSelectedIds = useRef<readonly string[]>([]);
+  useLayoutEffect(() => {
+    const next = new Set(selectedIds);
+    for (const id of previousSelectedIds.current) {
+      if (!next.has(id)) renderedElement(id)?.classList.remove("selected");
+    }
+    for (const id of selectedIds) {
+      renderedElement(id)?.classList.add("selected");
+    }
+    previousSelectedIds.current = selectedIds;
+  }, [selectedIds, page]);
+
+  const previousDropTargetId = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    if (previousDropTargetId.current !== dropTargetId) {
+      if (previousDropTargetId.current) {
+        renderedElement(previousDropTargetId.current)?.classList.remove(
+          "drop-target",
+        );
+      }
+      if (dropTargetId) {
+        renderedElement(dropTargetId)?.classList.add("drop-target");
+      }
+      previousDropTargetId.current = dropTargetId;
+    }
+  }, [dropTargetId, page]);
+
+  const previousDragIds = useRef<readonly string[]>([]);
+  useLayoutEffect(() => {
+    const next = new Set(dragIds);
+    for (const id of previousDragIds.current) {
+      if (next.has(id)) continue;
+      const element = renderedElement(id);
+      if (element) {
+        element.classList.remove("dragging");
+        const state = useEditorStore.getState();
+        const node = state.project ? findNode(state.project, id) : null;
+        element.style.transform = node?.rotation
+          ? `rotate(${node.rotation}deg)`
+          : "";
+      }
+    }
+    for (const id of dragIds) {
+      const element = renderedElement(id);
+      if (!element) continue;
+      const state = useEditorStore.getState();
+      const node = state.project ? findNode(state.project, id) : null;
+      const rotation = node?.rotation ? ` rotate(${node.rotation}deg)` : "";
+      element.classList.add("dragging");
+      element.style.transform = `translate(${dragOffset.dx}px, ${dragOffset.dy}px)${rotation}`;
+    }
+    previousDragIds.current = dragIds;
+  }, [dragIds, dragOffset, page]);
 
   // Track the space key for drag-to-pan.
   useEffect(() => {
@@ -674,17 +767,7 @@ export default function Canvas() {
               className="device-frame"
               style={{ width: frameWidth, minHeight: FRAME_MIN_HEIGHT }}
             >
-              <CanvasRenderContext.Provider
-                value={{
-                  selectedIds,
-                  dropTargetId,
-                  dragIds,
-                  dragDX: dragOffset.dx,
-                  dragDY: dragOffset.dy,
-                  breakpoints: breakpoints ?? [],
-                  breakpointId,
-                }}
-              >
+              <CanvasRenderContext.Provider value={renderContext}>
                 <ElementRenderer
                   node={page.root}
                   isRoot

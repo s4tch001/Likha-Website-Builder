@@ -16,7 +16,7 @@ export function effectiveWidth(bp: BreakpointDef): number {
  */
 export function effectiveStyles(
   node: ElementNode,
-  breakpoints: BreakpointDef[],
+  breakpoints: readonly BreakpointDef[],
   activeBreakpointId: string | null,
 ): Record<string, string> {
   const result: Record<string, string> = { ...node.styles };

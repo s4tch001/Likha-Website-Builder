@@ -1,26 +1,19 @@
 import { createContext } from "react";
 import type { BreakpointDef } from "../model/types";
 
-/** Render-time canvas state shared with every rendered element. */
+const EMPTY_ASSET_URLS: ReadonlyMap<string, string> = new Map();
+
+/** Stable model-derived render inputs shared with every rendered element. */
 export interface CanvasRenderState {
-  selectedIds: string[];
-  /** Container currently highlighted as a drop target during a drag. */
-  dropTargetId: string | null;
-  /** Elements being dragged together, with their live offset in world pixels. */
-  dragIds: string[];
-  dragDX: number;
-  dragDY: number;
   /** Breakpoints and the active one, so the renderer can apply the responsive cascade. */
-  breakpoints: BreakpointDef[];
+  breakpoints: readonly BreakpointDef[];
   breakpointId: string | null;
+  /** Canonical managed asset path to editor virtual-origin URL. */
+  assetUrls: ReadonlyMap<string, string>;
 }
 
 export const CanvasRenderContext = createContext<CanvasRenderState>({
-  selectedIds: [],
-  dropTargetId: null,
-  dragIds: [],
-  dragDX: 0,
-  dragDY: 0,
   breakpoints: [],
   breakpointId: null,
+  assetUrls: EMPTY_ASSET_URLS,
 });

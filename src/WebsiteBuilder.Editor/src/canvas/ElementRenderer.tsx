@@ -1,11 +1,10 @@
 /* eslint-disable @next/next/no-img-element -- the editor needs native media elements for arbitrary canvas geometry and its WebView2 asset origin */
-import { useContext, type CSSProperties } from "react";
+import { memo, useContext, type CSSProperties } from "react";
 import type { ElementNode } from "../model/types";
 import { effectiveStyles } from "../model/responsive";
 import { CanvasRenderContext } from "./CanvasContext";
 import { geometryStyle, toReactStyle } from "./styleUtils";
-import { editorAssetUrl } from "../model/assetElements";
-import { useEditorStore } from "../store/editorStore";
+import { elementRenderEqual } from "./renderOptimization";
 
 interface ElementRendererProps {
   node: ElementNode;
@@ -20,13 +19,12 @@ interface ElementRendererProps {
  * selected element and the active drop target get outline classes, and the node
  * being dragged is offset live via a transform.
  */
-export default function ElementRenderer({
+function ElementRenderer({
   node,
   isRoot,
   frameMinHeight,
 }: ElementRendererProps) {
   const ctx = useContext(CanvasRenderContext);
-  const project = useEditorStore((state) => state.project);
 
   if (node.hidden) {
     return null;
@@ -43,38 +41,19 @@ export default function ElementRenderer({
   const resolved = effectiveStyles(node, ctx.breakpoints, ctx.breakpointId);
   const style: CSSProperties = { ...base, ...toReactStyle(resolved) };
 
-  const isDragging = ctx.dragIds.includes(node.id);
-  const transforms: string[] = [];
-  if (isDragging) {
-    transforms.push(`translate(${ctx.dragDX}px, ${ctx.dragDY}px)`);
-  }
   if (!isRoot && node.rotation) {
-    transforms.push(`rotate(${node.rotation}deg)`);
-  }
-  if (transforms.length > 0) {
-    style.transform = transforms.join(" ");
+    style.transform = `rotate(${node.rotation}deg)`;
   }
 
-  const classes = ["wb-element"];
-  if (ctx.selectedIds.includes(node.id)) {
-    classes.push("selected");
-  }
-  if (node.id === ctx.dropTargetId) {
-    classes.push("drop-target");
-  }
-  if (isDragging) {
-    classes.push("dragging");
-  }
-
-  const className = classes.join(" ");
   const managedUrl = (attribute: "src" | "href") => {
     const value = node.attributes[attribute];
     if (!value) return undefined;
     if (!value.startsWith("Assets/")) return value;
-    return project ? (editorAssetUrl(project, value) ?? undefined) : undefined;
+    return ctx.assetUrls.get(value);
   };
   const common = {
-    className,
+    id: `wb-element-${node.id}`,
+    className: "wb-element",
     "data-element-type": node.type,
     "data-element-id": node.id,
     "data-root": isRoot ? "true" : undefined,
@@ -186,3 +165,16 @@ export default function ElementRenderer({
     </div>
   );
 }
+
+function propsEqual(
+  previous: Readonly<ElementRendererProps>,
+  next: Readonly<ElementRendererProps>,
+): boolean {
+  return (
+    previous.isRoot === next.isRoot &&
+    previous.frameMinHeight === next.frameMinHeight &&
+    elementRenderEqual(previous.node, next.node)
+  );
+}
+
+export default memo(ElementRenderer, propsEqual);

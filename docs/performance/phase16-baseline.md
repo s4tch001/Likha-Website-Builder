@@ -63,3 +63,24 @@ relevant failure: the current architecture is far from the 60 fps goal.
 2. Add viewport culling/spatial indexing while preserving selected/dragged ancestors.
 3. Replace full-tree mutation/history copies with structural sharing or patches.
 4. Reduce bridge payloads only after model correctness and conflict recovery remain proven.
+
+## Phase 16b result — stable render inputs
+
+The renderer no longer subscribes once per element to the full Project. Managed asset URLs and
+breakpoints are reduced to stable, canonical render inputs; selection, drop-target, and live drag
+visuals are synchronized only to the affected DOM elements; unchanged cloned leaves are guarded by
+`React.memo`. The canonical asset validation boundary is preserved.
+
+| Measurement | 16a baseline | After 16b |
+| --- | ---: | ---: |
+| Total DOM elements | 10,181 | 10,181 |
+| Full style recalculation | 57 ms | 48 ms |
+| Layout update | 67 ms | 66 ms |
+| Cold-reload LCP | 156 ms | 148 ms |
+| Cold-reload CLS | 0.00 | 0.00 |
+| 60 right-arrow nudges | 42,503.5 ms | 18,015.8 ms |
+| Effective interaction throughput | 1.41/s | 3.33/s |
+
+This is a 2.36× interaction-throughput improvement, but the retained 10,181-element DOM still
+dominates style/layout cost. Phase 16c must reduce the mounted tree before the frame budget can be
+approached.
