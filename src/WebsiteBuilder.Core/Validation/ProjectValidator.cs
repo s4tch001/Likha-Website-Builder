@@ -1,5 +1,5 @@
-using WebsiteBuilder.Core.Models;
 using System.Diagnostics.CodeAnalysis;
+using WebsiteBuilder.Core.Models;
 
 namespace WebsiteBuilder.Core.Validation;
 

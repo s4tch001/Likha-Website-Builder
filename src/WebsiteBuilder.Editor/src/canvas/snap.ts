@@ -72,7 +72,11 @@ export function computeSnap(
   }
 
   const best = (cands: number[], targets: number[]) => {
-    let result: { diff: number; snap: number; line: number | null } = { diff: threshold, snap: 0, line: null };
+    let result: { diff: number; snap: number; line: number | null } = {
+      diff: threshold,
+      snap: 0,
+      line: null,
+    };
     for (const c of cands) {
       for (const t of targets) {
         const diff = Math.abs(c - t);

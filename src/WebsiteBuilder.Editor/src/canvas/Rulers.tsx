@@ -8,7 +8,9 @@ interface RulerProps {
   pan: number;
 }
 
-const CANDIDATE_STEPS = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 5000];
+const CANDIDATE_STEPS = [
+  1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 5000,
+];
 const TARGET_LABEL_SPACING = 80; // px between numeric labels
 
 /** Chooses a "nice" world-unit step so labels land ~80px apart at the given zoom. */
@@ -52,7 +54,11 @@ export default function Ruler({ orientation, length, zoom, pan }: RulerProps) {
         <div
           key={tick.label}
           className="ruler-tick"
-          style={horizontal ? { left: `${tick.screen}px` } : { top: `${tick.screen}px` }}
+          style={
+            horizontal
+              ? { left: `${tick.screen}px` }
+              : { top: `${tick.screen}px` }
+          }
         >
           <span className="ruler-label">{tick.label}</span>
         </div>

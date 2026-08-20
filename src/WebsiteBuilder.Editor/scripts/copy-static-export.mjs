@@ -6,7 +6,10 @@ const editorRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const source = resolve(editorRoot, "out");
 const target = resolve(editorRoot, "../WebsiteBuilder.App/wwwroot");
 
-if (basename(target) !== "wwwroot" || basename(dirname(target)) !== "WebsiteBuilder.App") {
+if (
+  basename(target) !== "wwwroot" ||
+  basename(dirname(target)) !== "WebsiteBuilder.App"
+) {
   throw new Error(`Refusing to replace unexpected export target: ${target}`);
 }
 

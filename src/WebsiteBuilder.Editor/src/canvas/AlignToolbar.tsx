@@ -15,8 +15,18 @@ const BUTTONS: AlignButton[] = [
   { mode: "top", glyph: "⊤", title: "Align top" },
   { mode: "vmiddle", glyph: "⊟", title: "Align vertical centers" },
   { mode: "bottom", glyph: "⊥", title: "Align bottom" },
-  { mode: "distH", glyph: "↔", title: "Distribute horizontally", needsThree: true },
-  { mode: "distV", glyph: "↕", title: "Distribute vertically", needsThree: true },
+  {
+    mode: "distH",
+    glyph: "↔",
+    title: "Distribute horizontally",
+    needsThree: true,
+  },
+  {
+    mode: "distV",
+    glyph: "↕",
+    title: "Distribute vertically",
+    needsThree: true,
+  },
 ];
 
 /**

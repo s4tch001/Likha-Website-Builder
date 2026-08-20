@@ -17,7 +17,11 @@ interface ElementRendererProps {
  * selected element and the active drop target get outline classes, and the node
  * being dragged is offset live via a transform.
  */
-export default function ElementRenderer({ node, isRoot, frameMinHeight }: ElementRendererProps) {
+export default function ElementRenderer({
+  node,
+  isRoot,
+  frameMinHeight,
+}: ElementRendererProps) {
   const ctx = useContext(CanvasRenderContext);
 
   if (node.hidden) {

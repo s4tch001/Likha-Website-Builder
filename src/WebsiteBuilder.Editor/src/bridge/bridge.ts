@@ -22,7 +22,9 @@ function isBridgeMessage(value: unknown): value is BridgeMessage {
   return (
     typeof message.id === "string" &&
     typeof message.method === "string" &&
-    (message.type === "Request" || message.type === "Response" || message.type === "Event")
+    (message.type === "Request" ||
+      message.type === "Response" ||
+      message.type === "Event")
   );
 }
 
@@ -45,7 +47,8 @@ class EditorBridge {
   private readonly listeners = new Map<string, Set<EventListener>>();
 
   constructor() {
-    this.host = typeof window === "undefined" ? undefined : window.chrome?.webview;
+    this.host =
+      typeof window === "undefined" ? undefined : window.chrome?.webview;
     this.host?.addEventListener("message", (event) => {
       if (isBridgeMessage(event.data)) {
         void this.onMessage(event.data);
@@ -59,7 +62,10 @@ class EditorBridge {
   }
 
   /** Sends a request to the host and resolves with its response payload. */
-  invoke<TResponse = unknown>(method: string, payload?: unknown): Promise<TResponse> {
+  invoke<TResponse = unknown>(
+    method: string,
+    payload?: unknown,
+  ): Promise<TResponse> {
     if (!this.host) {
       return Promise.reject(new Error("Not hosted in WebView2."));
     }
@@ -134,7 +140,9 @@ class EditorBridge {
       }
 
       case "Event": {
-        this.listeners.get(message.method)?.forEach((listener) => listener(message.payload));
+        this.listeners
+          .get(message.method)
+          ?.forEach((listener) => listener(message.payload));
         break;
       }
 
@@ -153,7 +161,10 @@ class EditorBridge {
         id: message.id,
         type: "Response",
         method: message.method,
-        error: { code: "not_found", message: `No editor handler for '${message.method}'.` },
+        error: {
+          code: "not_found",
+          message: `No editor handler for '${message.method}'.`,
+        },
       });
       return;
     }
@@ -171,7 +182,10 @@ class EditorBridge {
         id: message.id,
         type: "Response",
         method: message.method,
-        error: { code: "handler_error", message: error instanceof Error ? error.message : String(error) },
+        error: {
+          code: "handler_error",
+          message: error instanceof Error ? error.message : String(error),
+        },
       });
     }
   }

@@ -29,7 +29,9 @@ export function effectiveStyles(
   const activeWidth = effectiveWidth(active);
   // Widest → narrowest so wider overrides are applied first and the active
   // breakpoint (the narrowest of those that apply) wins.
-  const ordered = [...breakpoints].sort((a, b) => effectiveWidth(b) - effectiveWidth(a));
+  const ordered = [...breakpoints].sort(
+    (a, b) => effectiveWidth(b) - effectiveWidth(a),
+  );
   for (const bp of ordered) {
     if (bp.isBase || effectiveWidth(bp) < activeWidth) {
       continue;

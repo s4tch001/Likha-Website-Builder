@@ -29,7 +29,10 @@ export type EventListener = (payload: unknown) => void;
 /** The minimal WebView2 host-object surface we depend on. */
 export interface WebViewHost {
   postMessage: (message: unknown) => void;
-  addEventListener: (type: "message", listener: (event: { data: unknown }) => void) => void;
+  addEventListener: (
+    type: "message",
+    listener: (event: { data: unknown }) => void,
+  ) => void;
 }
 
 declare global {

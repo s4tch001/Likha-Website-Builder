@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Build, test, and audit
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+          cache: true
+          cache-dependency-path: "**/*.csproj"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: src/WebsiteBuilder.Editor/package-lock.json
+
+      - name: Restore .NET dependencies
+        run: dotnet restore WebsiteBuilder.sln
+
+      - name: Install editor dependencies
+        working-directory: src/WebsiteBuilder.Editor
+        run: npm ci
+
+      - name: Check editor formatting
+        working-directory: src/WebsiteBuilder.Editor
+        run: npm run format:check
+
+      - name: Lint editor
+        working-directory: src/WebsiteBuilder.Editor
+        run: npm run lint
+
+      - name: Type-check editor with TypeScript 7 native
+        working-directory: src/WebsiteBuilder.Editor
+        run: npm run typecheck
+
+      - name: Test editor with coverage gate
+        working-directory: src/WebsiteBuilder.Editor
+        run: npm run test:coverage
+
+      - name: Build and stage static editor
+        working-directory: src/WebsiteBuilder.Editor
+        run: npm run build
+
+      - name: Check C# formatting
+        run: |
+          dotnet format WebsiteBuilder.sln whitespace --no-restore --verify-no-changes
+          dotnet format WebsiteBuilder.sln style --no-restore --verify-no-changes --severity warn
+
+      - name: Build solution
+        run: dotnet build WebsiteBuilder.sln -c Release --no-restore
+
+      - name: Test Core with coverage gate
+        run: dotnet test tests/WebsiteBuilder.Core.Tests/WebsiteBuilder.Core.Tests.csproj -c Release --no-build --no-restore /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput=../../artifacts/coverage/core/
+
+      - name: Test CodeGen with coverage gate
+        run: dotnet test tests/WebsiteBuilder.CodeGen.Tests/WebsiteBuilder.CodeGen.Tests.csproj -c Release --no-build --no-restore /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput=../../artifacts/coverage/codegen/
+
+      - name: Audit npm dependencies
+        working-directory: src/WebsiteBuilder.Editor
+        run: npm audit --audit-level=high
+
+      - name: Audit NuGet dependencies
+        run: dotnet list WebsiteBuilder.sln package --vulnerable --include-transitive
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: coverage-reports
+          path: |
+            artifacts/coverage/**
+            src/WebsiteBuilder.Editor/coverage/**
+          if-no-files-found: warn
+          retention-days: 14
+

@@ -2,7 +2,12 @@ import { bridge } from "../bridge/bridge";
 import type { Project } from "../model/types";
 import { isValidProject } from "../model/projectValidation";
 import { effectiveStyles } from "../model/responsive";
-import { type AlignMode, findNode, findParent, useEditorStore } from "../store/editorStore";
+import {
+  type AlignMode,
+  findNode,
+  findParent,
+  useEditorStore,
+} from "../store/editorStore";
 
 export interface HostInfo {
   name: string;
@@ -26,7 +31,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function readProjectEnvelope(value: unknown): ProjectSyncEnvelope | null {
-  if (!isRecord(value) || !Number.isSafeInteger(value.revision) || !isValidProject(value.project)) {
+  if (
+    !isRecord(value) ||
+    !Number.isSafeInteger(value.revision) ||
+    !isValidProject(value.project)
+  ) {
     return null;
   }
 
@@ -147,9 +156,20 @@ export async function connectHost(): Promise<HostInfo | null> {
     }
   });
   bridge.on("editor.setGeometry", (payload) => {
-    const p = payload as { id?: string; x?: number; y?: number; width?: number; height?: number };
+    const p = payload as {
+      id?: string;
+      x?: number;
+      y?: number;
+      width?: number;
+      height?: number;
+    };
     if (p?.id) {
-      useEditorStore.getState().setGeometry(p.id, { x: p.x, y: p.y, width: p.width, height: p.height });
+      useEditorStore.getState().setGeometry(p.id, {
+        x: p.x,
+        y: p.y,
+        width: p.width,
+        height: p.height,
+      });
     }
   });
   bridge.on("editor.setRotation", (payload) => {
@@ -203,7 +223,13 @@ export async function connectHost(): Promise<HostInfo | null> {
     const s2 = useEditorStore.getState();
     const card = after ? findNode(after, "feature-card") : null;
     if (card) {
-      s2.resizeElement("feature-card", card.x, card.y, card.width + 80, card.height + 40);
+      s2.resizeElement(
+        "feature-card",
+        card.x,
+        card.y,
+        card.width + 80,
+        card.height + 40,
+      );
     }
     s2.selectElement("feature-card");
     s2.duplicateElement("feature-card");
@@ -226,7 +252,9 @@ export async function connectHost(): Promise<HostInfo | null> {
     s2.rotateElement("feature-card", 30);
     const rotated = useEditorStore.getState().project;
     const card2 = rotated ? findNode(rotated, "feature-card") : null;
-    bridge.publish("editor.rotateResult", { rotation: card2 ? card2.rotation : null });
+    bridge.publish("editor.rotateResult", {
+      rotation: card2 ? card2.rotation : null,
+    });
 
     // Demonstrate the configurable canvas background (without persisting it).
     useEditorStore.setState({ canvasBackground: "#0c2a3a" });
@@ -279,21 +307,27 @@ export async function connectHost(): Promise<HostInfo | null> {
     pushInFlight = true;
     const sentRevision = state.revision;
     try {
-      const response = await bridge.invoke<ProjectUpdateResponse>("host.applyProjectUpdate", {
-        baseRevision: state.hostRevision,
-        project: state.project,
-      });
+      const response = await bridge.invoke<ProjectUpdateResponse>(
+        "host.applyProjectUpdate",
+        {
+          baseRevision: state.hostRevision,
+          project: state.project,
+        },
+      );
       if (response.accepted) {
         useEditorStore.getState().acknowledgeHostRevision(response.revision);
       } else if (response.project) {
-        useEditorStore.getState().setProject(response.project, response.revision);
+        useEditorStore
+          .getState()
+          .setProject(response.project, response.revision);
       }
     } catch {
       // Keep the local edit in memory. A later mutation will retry; the host
       // revision check prevents this snapshot from being accepted if now stale.
     } finally {
       pushInFlight = false;
-      const changedWhileSending = useEditorStore.getState().revision !== sentRevision;
+      const changedWhileSending =
+        useEditorStore.getState().revision !== sentRevision;
       if (pushAgain || changedWhileSending) {
         pushAgain = false;
         void pushProject();
@@ -320,16 +354,21 @@ export async function connectHost(): Promise<HostInfo | null> {
   const publishSelection = () => {
     const state = useEditorStore.getState();
     const primaryId = state.selectedIds[0];
-    const element = primaryId && state.project ? findNode(state.project, primaryId) : null;
+    const element =
+      primaryId && state.project ? findNode(state.project, primaryId) : null;
     // Include the active breakpoint and the resolved (cascaded) styles so the host
     // Property Inspector shows effective values for the breakpoint being edited.
     const breakpoints = state.project?.breakpoints ?? [];
     const active = breakpoints.find((b) => b.id === state.breakpointId);
     const isBase = !active || active.isBase;
-    const effective = element ? effectiveStyles(element, breakpoints, state.breakpointId) : null;
+    const effective = element
+      ? effectiveStyles(element, breakpoints, state.breakpointId)
+      : null;
     // Keys overridden specifically at the active (non-base) breakpoint.
     const overridden =
-      element && active && !active.isBase ? Object.keys(element.responsiveStyles?.[active.id] ?? {}) : [];
+      element && active && !active.isBase
+        ? Object.keys(element.responsiveStyles?.[active.id] ?? {})
+        : [];
     bridge.publish("editor.selectionChanged", {
       ids: state.selectedIds,
       element,
@@ -342,7 +381,10 @@ export async function connectHost(): Promise<HostInfo | null> {
   };
   useEditorStore.subscribe((state) => {
     const key = state.selectedIds.join(",");
-    if (key !== lastSelKey || (state.selectedIds.length > 0 && state.revision !== lastSelRevision)) {
+    if (
+      key !== lastSelKey ||
+      (state.selectedIds.length > 0 && state.revision !== lastSelRevision)
+    ) {
       lastSelKey = key;
       lastSelRevision = state.revision;
       publishSelection();
@@ -379,10 +421,15 @@ export async function connectHost(): Promise<HostInfo | null> {
   }
 
   // Announce readiness, then pull the current project.
-  bridge.publish("editor.ready", { editor: "WebsiteBuilder", version: "0.1.0" });
+  bridge.publish("editor.ready", {
+    editor: "WebsiteBuilder",
+    version: "0.1.0",
+  });
 
   // The host's request handler returns the project as a JSON object payload.
-  const snapshot = readProjectEnvelope(await bridge.invoke<unknown>("host.getProject"));
+  const snapshot = readProjectEnvelope(
+    await bridge.invoke<unknown>("host.getProject"),
+  );
   if (snapshot) {
     useEditorStore.getState().setProject(snapshot.project, snapshot.revision);
   }

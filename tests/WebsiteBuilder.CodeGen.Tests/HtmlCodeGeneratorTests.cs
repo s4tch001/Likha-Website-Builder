@@ -161,7 +161,13 @@ public class HtmlCodeGeneratorTests
         project.Pages.Add(new Page { Id = "p2", Name = "About", Route = "about" });
         project.Pages[1].Root.Children.Add(new ElementNode
         {
-            Id = "about-title", Type = ElementTypes.Heading, X = 10, Y = 10, Width = 200, Height = 40, Text = "About",
+            Id = "about-title",
+            Type = ElementTypes.Heading,
+            X = 10,
+            Y = 10,
+            Width = 200,
+            Height = 40,
+            Text = "About",
         });
 
         var files = new HtmlCodeGenerator().Generate(project);

@@ -2,7 +2,13 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { ElementNode, Project } from "../model/types";
 import { findNode, useEditorStore } from "./editorStore";
 
-function node(id: string, x: number, y: number, w: number, h: number): ElementNode {
+function node(
+  id: string,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+): ElementNode {
   return {
     id,
     type: "Div",
@@ -27,8 +33,17 @@ function makeProject(children: ElementNode[]): Project {
     name: "Test",
     createdUtc: "",
     modifiedUtc: "",
-    breakpoints: [{ id: "desktop", label: "Desktop", maxWidth: 0, isBase: true }],
-    pages: [{ id: "page1", name: "Home", route: "index", root: { ...node("root", 0, 0, 0, 0), children } }],
+    breakpoints: [
+      { id: "desktop", label: "Desktop", maxWidth: 0, isBase: true },
+    ],
+    pages: [
+      {
+        id: "page1",
+        name: "Home",
+        route: "index",
+        root: { ...node("root", 0, 0, 0, 0), children },
+      },
+    ],
     variables: {},
     assets: [],
   };
@@ -36,16 +51,24 @@ function makeProject(children: ElementNode[]): Project {
 
 describe("editorStore", () => {
   beforeEach(() => {
-    useEditorStore.getState().setProject(makeProject([node("a", 0, 0, 100, 40), node("b", 200, 200, 100, 40)]));
+    useEditorStore
+      .getState()
+      .setProject(
+        makeProject([node("a", 0, 0, 100, 40), node("b", 200, 200, 100, 40)]),
+      );
   });
 
   it("rotateElement sets and normalizes the rotation", () => {
     useEditorStore.getState().rotateElement("a", 30);
-    expect(findNode(useEditorStore.getState().project!, "a")!.rotation).toBe(30);
+    expect(findNode(useEditorStore.getState().project!, "a")!.rotation).toBe(
+      30,
+    );
 
     // 200° normalizes into (-180, 180].
     useEditorStore.getState().rotateElement("a", 200);
-    expect(findNode(useEditorStore.getState().project!, "a")!.rotation).toBe(-160);
+    expect(findNode(useEditorStore.getState().project!, "a")!.rotation).toBe(
+      -160,
+    );
   });
 
   it("alignSelection right makes right edges equal", () => {
@@ -62,19 +85,27 @@ describe("editorStore", () => {
   it("setStyle sets and clears a style", () => {
     const store = useEditorStore.getState();
     store.setStyle("a", "background", "#ff0000");
-    expect(findNode(useEditorStore.getState().project!, "a")!.styles.background).toBe("#ff0000");
+    expect(
+      findNode(useEditorStore.getState().project!, "a")!.styles.background,
+    ).toBe("#ff0000");
 
     store.setStyle("a", "background", "");
-    expect(findNode(useEditorStore.getState().project!, "a")!.styles.background).toBeUndefined();
+    expect(
+      findNode(useEditorStore.getState().project!, "a")!.styles.background,
+    ).toBeUndefined();
   });
 
   it("setText sets and clears text", () => {
     const store = useEditorStore.getState();
     store.setText("a", "Hello");
-    expect(findNode(useEditorStore.getState().project!, "a")!.text).toBe("Hello");
+    expect(findNode(useEditorStore.getState().project!, "a")!.text).toBe(
+      "Hello",
+    );
 
     store.setText("a", "");
-    expect(findNode(useEditorStore.getState().project!, "a")!.text).toBeUndefined();
+    expect(
+      findNode(useEditorStore.getState().project!, "a")!.text,
+    ).toBeUndefined();
   });
 
   it("setGeometry updates only the provided fields", () => {
@@ -106,7 +137,9 @@ describe("editorStore", () => {
     expect(state.selectedIds).not.toContain("a");
 
     state.setHidden("a", false);
-    expect(findNode(useEditorStore.getState().project!, "a")!.hidden).toBe(false);
+    expect(findNode(useEditorStore.getState().project!, "a")!.hidden).toBe(
+      false,
+    );
   });
 
   it("setLocked toggles the flag without affecting the selection", () => {
@@ -123,7 +156,9 @@ describe("editorStore", () => {
     const store = useEditorStore.getState();
     store.setLocked("a", true);
 
-    const before = structuredClone(findNode(useEditorStore.getState().project!, "a"));
+    const before = structuredClone(
+      findNode(useEditorStore.getState().project!, "a"),
+    );
     const s = useEditorStore.getState();
     s.moveElement("a", 500, 500);
     s.resizeElement("a", 0, 0, 999, 999);
@@ -172,20 +207,28 @@ describe("editorStore", () => {
   it("renameElement sets and clears the name (and respects locks)", () => {
     const store = useEditorStore.getState();
     store.renameElement("a", "  Hero  ");
-    expect(findNode(useEditorStore.getState().project!, "a")!.name).toBe("Hero");
+    expect(findNode(useEditorStore.getState().project!, "a")!.name).toBe(
+      "Hero",
+    );
 
     store.renameElement("a", "");
-    expect(findNode(useEditorStore.getState().project!, "a")!.name).toBeUndefined();
+    expect(
+      findNode(useEditorStore.getState().project!, "a")!.name,
+    ).toBeUndefined();
 
     store.setLocked("a", true);
     store.renameElement("a", "Nope");
-    expect(findNode(useEditorStore.getState().project!, "a")!.name).toBeUndefined();
+    expect(
+      findNode(useEditorStore.getState().project!, "a")!.name,
+    ).toBeUndefined();
   });
 
   it("reorderElement reorders siblings and reparents", () => {
     const store = useEditorStore.getState();
     const rootChildren = () =>
-      findNode(useEditorStore.getState().project!, "root")!.children.map((c) => c.id);
+      findNode(useEditorStore.getState().project!, "root")!.children.map(
+        (c) => c.id,
+      );
 
     // Move "a" to the end (after "b").
     store.reorderElement("a", "root", 2);
@@ -194,16 +237,29 @@ describe("editorStore", () => {
     // Reparent "a" inside "b".
     store.reorderElement("a", "b", 0);
     expect(rootChildren()).toEqual(["b"]);
-    expect(findNode(useEditorStore.getState().project!, "b")!.children.map((c) => c.id)).toEqual(["a"]);
+    expect(
+      findNode(useEditorStore.getState().project!, "b")!.children.map(
+        (c) => c.id,
+      ),
+    ).toEqual(["a"]);
   });
 
   it("reorderElement refuses to drop a node into its own descendant", () => {
     useEditorStore.getState().setProject(
-      makeProject([{ ...node("c", 0, 0, 100, 100), children: [node("d", 10, 10, 40, 40)] }]),
+      makeProject([
+        {
+          ...node("c", 0, 0, 100, 100),
+          children: [node("d", 10, 10, 40, 40)],
+        },
+      ]),
     );
     useEditorStore.getState().reorderElement("c", "d", 0);
     // "c" stays under root; the cycle is rejected.
-    expect(findNode(useEditorStore.getState().project!, "root")!.children.map((x) => x.id)).toEqual(["c"]);
+    expect(
+      findNode(useEditorStore.getState().project!, "root")!.children.map(
+        (x) => x.id,
+      ),
+    ).toEqual(["c"]);
   });
 
   it("groupSelection wraps the selection and preserves positions", () => {
@@ -237,7 +293,9 @@ describe("editorStore", () => {
 
     // At the base breakpoint, edits land in the base style map.
     store.setStyle("a", "color", "black");
-    expect(findNode(useEditorStore.getState().project!, "a")!.styles.color).toBe("black");
+    expect(
+      findNode(useEditorStore.getState().project!, "a")!.styles.color,
+    ).toBe("black");
 
     // At a non-base breakpoint, edits land in that breakpoint's override layer.
     store.setBreakpoint("mobile");
@@ -255,7 +313,12 @@ describe("editorStore", () => {
 
   it("ungroupElement lifts children back to the group's parent", () => {
     useEditorStore.getState().setProject(
-      makeProject([{ ...node("g", 10, 10, 200, 200), children: [node("e", 5, 5, 40, 40)] }]),
+      makeProject([
+        {
+          ...node("g", 10, 10, 200, 200),
+          children: [node("e", 5, 5, 40, 40)],
+        },
+      ]),
     );
     useEditorStore.getState().ungroupElement("g");
 

@@ -29,7 +29,10 @@ public static class ProjectTemplates
             Id = "hero-heading",
             Type = ElementTypes.Heading,
             Name = "Hero Heading",
-            X = 80, Y = 80, Width = 720, Height = 64,
+            X = 80,
+            Y = 80,
+            Width = 720,
+            Height = 64,
             Text = "Build websites visually",
             Styles =
             {
@@ -45,7 +48,10 @@ public static class ProjectTemplates
             Id = "hero-subtitle",
             Type = ElementTypes.Paragraph,
             Name = "Hero Subtitle",
-            X = 80, Y = 160, Width = 640, Height = 72,
+            X = 80,
+            Y = 160,
+            Width = 640,
+            Height = 72,
             Text = "Design responsive pages with drag-and-drop and export clean HTML, CSS, JavaScript and React.",
             Styles =
             {
@@ -60,7 +66,10 @@ public static class ProjectTemplates
             Id = "hero-button",
             Type = ElementTypes.Button,
             Name = "Get Started Button",
-            X = 80, Y = 256, Width = 168, Height = 48,
+            X = 80,
+            Y = 256,
+            Width = 168,
+            Height = 48,
             Text = "Get Started",
             Styles =
             {
@@ -80,7 +89,10 @@ public static class ProjectTemplates
             Id = "feature-card",
             Type = ElementTypes.Card,
             Name = "Feature Card",
-            X = 80, Y = 344, Width = 720, Height = 180,
+            X = 80,
+            Y = 344,
+            Width = 720,
+            Height = 180,
             Styles =
             {
                 ["background"] = "#1a1a20",

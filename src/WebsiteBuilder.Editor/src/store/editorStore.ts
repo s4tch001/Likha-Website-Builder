@@ -1,7 +1,10 @@
 import { create } from "zustand";
 import { createElement } from "../model/elementFactory";
 import type { BreakpointDef, ElementNode, Page, Project } from "../model/types";
-import { isSafeCssPropertyName, isSafeCssValue } from "../model/projectValidation";
+import {
+  isSafeCssPropertyName,
+  isSafeCssValue,
+} from "../model/projectValidation";
 
 export const MIN_ZOOM = 10;
 export const MAX_ZOOM = 400;
@@ -15,7 +18,10 @@ function loadCanvasBackground(): string {
   }
 
   try {
-    return window.localStorage.getItem(CANVAS_BG_STORAGE_KEY) ?? DEFAULT_CANVAS_BACKGROUND;
+    return (
+      window.localStorage.getItem(CANVAS_BG_STORAGE_KEY) ??
+      DEFAULT_CANVAS_BACKGROUND
+    );
   } catch {
     return DEFAULT_CANVAS_BACKGROUND;
   }
@@ -84,7 +90,10 @@ export function findParent(project: Project, id: string): ElementNode | null {
  * Absolute position of a node within its page frame. The page root sits at the
  * frame origin (its own x/y are ignored); each descendant adds its local x/y.
  */
-export function getAbsolutePosition(project: Project, id: string): { x: number; y: number } | null {
+export function getAbsolutePosition(
+  project: Project,
+  id: string,
+): { x: number; y: number } | null {
   const walk = (
     node: ElementNode,
     baseX: number,
@@ -127,7 +136,10 @@ export interface ElementRect {
  * Absolute rectangles for every non-root element of a page, used for marquee
  * hit-testing. The root is excluded (it fills the frame).
  */
-export function collectElementRects(project: Project, pageId: string | null): ElementRect[] {
+export function collectElementRects(
+  project: Project,
+  pageId: string | null,
+): ElementRect[] {
   const page = project.pages.find((p) => p.id === pageId) ?? project.pages[0];
   if (!page) {
     return [];
@@ -164,7 +176,11 @@ function reassignIds(node: ElementNode): void {
 }
 
 /** True if candidateId is the node itself or one of its descendants. */
-function isSelfOrDescendant(project: Project, nodeId: string, candidateId: string): boolean {
+function isSelfOrDescendant(
+  project: Project,
+  nodeId: string,
+  candidateId: string,
+): boolean {
   const node = findNode(project, nodeId);
   if (!node) {
     return false;
@@ -241,7 +257,13 @@ interface EditorState {
   /** Aligns or distributes the current multi-selection. */
   alignSelection: (mode: AlignMode) => void;
   /** Sets a node's full geometry (position + size) within its current parent. */
-  resizeElement: (id: string, x: number, y: number, width: number, height: number) => void;
+  resizeElement: (
+    id: string,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+  ) => void;
   /** Sets a node's rotation in degrees (around its center). */
   rotateElement: (id: string, degrees: number) => void;
   /** Sets or clears a single CSS style on a node (empty value clears it). */
@@ -249,9 +271,17 @@ interface EditorState {
   /** Sets a node's inline text content (empty clears it). */
   setText: (id: string, text: string) => void;
   /** Updates any provided geometry fields of a node, keeping the rest. */
-  setGeometry: (id: string, geometry: { x?: number; y?: number; width?: number; height?: number }) => void;
+  setGeometry: (
+    id: string,
+    geometry: { x?: number; y?: number; width?: number; height?: number },
+  ) => void;
   /** Moves a node under a new parent, with coordinates local to that parent. */
-  reparentElement: (id: string, newParentId: string, x: number, y: number) => void;
+  reparentElement: (
+    id: string,
+    newParentId: string,
+    x: number,
+    y: number,
+  ) => void;
   /** Sets a node's editor-only hidden flag (hidden nodes are not rendered). */
   setHidden: (id: string, hidden: boolean) => void;
   /** Sets a node's editor-only locked flag (locked nodes resist canvas editing). */
@@ -267,12 +297,16 @@ interface EditorState {
 }
 
 /** Id of a project's first/active page root, or null. */
-function activeRootId(state: { project: Project | null; activePageId: string | null }): string | null {
+function activeRootId(state: {
+  project: Project | null;
+  activePageId: string | null;
+}): string | null {
   if (!state.project) {
     return null;
   }
   const page =
-    state.project.pages.find((p) => p.id === state.activePageId) ?? state.project.pages[0];
+    state.project.pages.find((p) => p.id === state.activePageId) ??
+    state.project.pages[0];
   return page ? page.root.id : null;
 }
 
@@ -300,18 +334,24 @@ export const useEditorStore = create<EditorState>((set) => ({
       const firstPage: Page | undefined = project.pages[0];
       const base: BreakpointDef | undefined =
         project.breakpoints.find((b) => b.isBase) ?? project.breakpoints[0];
-      const activePage = project.pages.some((page) => page.id === state.activePageId)
+      const activePage = project.pages.some(
+        (page) => page.id === state.activePageId,
+      )
         ? state.activePageId
-        : firstPage?.id ?? null;
-      const activeBreakpoint = project.breakpoints.some((bp) => bp.id === state.breakpointId)
+        : (firstPage?.id ?? null);
+      const activeBreakpoint = project.breakpoints.some(
+        (bp) => bp.id === state.breakpointId,
+      )
         ? state.breakpointId
-        : base?.id ?? null;
+        : (base?.id ?? null);
       return {
         project,
         hostRevision,
         activePageId: activePage,
         breakpointId: activeBreakpoint,
-        selectedIds: state.selectedIds.filter((id) => findNode(project, id) !== null),
+        selectedIds: state.selectedIds.filter(
+          (id) => findNode(project, id) !== null,
+        ),
       };
     }),
 
@@ -440,7 +480,9 @@ export const useEditorStore = create<EditorState>((set) => ({
       return {
         project,
         revision: state.revision + 1,
-        selectedIds: state.selectedIds.filter((id) => findNode(project, id) !== null),
+        selectedIds: state.selectedIds.filter(
+          (id) => findNode(project, id) !== null,
+        ),
       };
     }),
 
@@ -516,7 +558,11 @@ export const useEditorStore = create<EditorState>((set) => ({
 
   moveSelectionBy: (dx, dy) =>
     set((state) => {
-      if (!state.project || state.selectedIds.length === 0 || (dx === 0 && dy === 0)) {
+      if (
+        !state.project ||
+        state.selectedIds.length === 0 ||
+        (dx === 0 && dy === 0)
+      ) {
         return {};
       }
       const project = structuredClone(state.project) as Project;
@@ -588,7 +634,10 @@ export const useEditorStore = create<EditorState>((set) => ({
 
       if (mode === "distH" && items.length > 2) {
         const sorted = [...items].sort((a, b) => a.absX - b.absX);
-        const span = sorted[sorted.length - 1].absX + sorted[sorted.length - 1].w - sorted[0].absX;
+        const span =
+          sorted[sorted.length - 1].absX +
+          sorted[sorted.length - 1].w -
+          sorted[0].absX;
         const totalW = sorted.reduce((s, i) => s + i.w, 0);
         const gap = (span - totalW) / (sorted.length - 1);
         let cursor = sorted[0].absX;
@@ -598,7 +647,10 @@ export const useEditorStore = create<EditorState>((set) => ({
         }
       } else if (mode === "distV" && items.length > 2) {
         const sorted = [...items].sort((a, b) => a.absY - b.absY);
-        const span = sorted[sorted.length - 1].absY + sorted[sorted.length - 1].h - sorted[0].absY;
+        const span =
+          sorted[sorted.length - 1].absY +
+          sorted[sorted.length - 1].h -
+          sorted[0].absY;
         const totalH = sorted.reduce((s, i) => s + i.h, 0);
         const gap = (span - totalH) / (sorted.length - 1);
         let cursor = sorted[0].absY;
@@ -657,7 +709,11 @@ export const useEditorStore = create<EditorState>((set) => ({
 
   setStyle: (id, name, value) =>
     set((state) => {
-      if (!state.project || !isSafeCssPropertyName(name) || (value !== "" && !isSafeCssValue(value))) {
+      if (
+        !state.project ||
+        !isSafeCssPropertyName(name) ||
+        (value !== "" && !isSafeCssValue(value))
+      ) {
         return {};
       }
       const project = structuredClone(state.project) as Project;
@@ -669,7 +725,9 @@ export const useEditorStore = create<EditorState>((set) => ({
       // At a non-base breakpoint, edits write to that breakpoint's override layer;
       // at the base they write the base styles. Clearing a value removes it from
       // whichever layer is active (reverting to the inherited/base value).
-      const activeBp = state.project.breakpoints.find((b) => b.id === state.breakpointId);
+      const activeBp = state.project.breakpoints.find(
+        (b) => b.id === state.breakpointId,
+      );
       if (!activeBp || activeBp.isBase) {
         if (value === "") {
           delete node.styles[name];
@@ -774,7 +832,9 @@ export const useEditorStore = create<EditorState>((set) => ({
       return {
         project,
         revision: state.revision + 1,
-        selectedIds: hidden ? state.selectedIds.filter((s) => s !== id) : state.selectedIds,
+        selectedIds: hidden
+          ? state.selectedIds.filter((s) => s !== id)
+          : state.selectedIds,
       };
     }),
 
@@ -833,7 +893,10 @@ export const useEditorStore = create<EditorState>((set) => ({
       if (oldParent === newParent && oldIndex < index) {
         insertIndex -= 1;
       }
-      insertIndex = Math.max(0, Math.min(insertIndex, newParent.children.length));
+      insertIndex = Math.max(
+        0,
+        Math.min(insertIndex, newParent.children.length),
+      );
       newParent.children.splice(insertIndex, 0, node);
       return { project, revision: state.revision + 1, selectedIds: [id] };
     }),
@@ -846,7 +909,10 @@ export const useEditorStore = create<EditorState>((set) => ({
       const src = state.project;
       // Keep only top-level picks (drop any whose ancestor is also selected).
       const ids = state.selectedIds.filter(
-        (id) => !state.selectedIds.some((other) => other !== id && isSelfOrDescendant(src, other, id)),
+        (id) =>
+          !state.selectedIds.some(
+            (other) => other !== id && isSelfOrDescendant(src, other, id),
+          ),
       );
       if (ids.length < 2) {
         return {};
@@ -859,7 +925,9 @@ export const useEditorStore = create<EditorState>((set) => ({
         .map((id) => {
           const node = findNode(project, id);
           const abs = getAbsolutePosition(project, id);
-          return node && abs && !node.locked ? { node, absX: abs.x, absY: abs.y } : null;
+          return node && abs && !node.locked
+            ? { node, absX: abs.x, absY: abs.y }
+            : null;
         })
         .filter((m): m is NonNullable<typeof m> => m !== null);
       if (members.length < 2) {
@@ -875,8 +943,13 @@ export const useEditorStore = create<EditorState>((set) => ({
       if (!firstParent) {
         return {};
       }
-      const parentAbs = getAbsolutePosition(project, firstParent.id) ?? { x: 0, y: 0 };
-      const insertIndex = firstParent.children.findIndex((c) => c.id === members[0].node.id);
+      const parentAbs = getAbsolutePosition(project, firstParent.id) ?? {
+        x: 0,
+        y: 0,
+      };
+      const insertIndex = firstParent.children.findIndex(
+        (c) => c.id === members[0].node.id,
+      );
 
       const group: ElementNode = {
         id: freshId("group"),
@@ -899,14 +972,19 @@ export const useEditorStore = create<EditorState>((set) => ({
       for (const m of members) {
         const oldParent = findParent(project, m.node.id);
         if (oldParent) {
-          oldParent.children = oldParent.children.filter((c) => c.id !== m.node.id);
+          oldParent.children = oldParent.children.filter(
+            (c) => c.id !== m.node.id,
+          );
         }
         m.node.x = Math.round(m.absX - minX);
         m.node.y = Math.round(m.absY - minY);
         group.children.push(m.node);
       }
 
-      const idx = insertIndex >= 0 ? Math.min(insertIndex, firstParent.children.length) : firstParent.children.length;
+      const idx =
+        insertIndex >= 0
+          ? Math.min(insertIndex, firstParent.children.length)
+          : firstParent.children.length;
       firstParent.children.splice(idx, 0, group);
 
       return { project, revision: state.revision + 1, selectedIds: [group.id] };
@@ -931,7 +1009,11 @@ export const useEditorStore = create<EditorState>((set) => ({
         return child;
       });
       parent.children.splice(groupIndex, 1, ...lifted);
-      return { project, revision: state.revision + 1, selectedIds: lifted.map((c) => c.id) };
+      return {
+        project,
+        revision: state.revision + 1,
+        selectedIds: lifted.map((c) => c.id),
+      };
     }),
 }));
 

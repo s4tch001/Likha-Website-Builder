@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { Project } from "./types";
-import { isSafeCssPropertyName, isSafeCssValue, isValidProject } from "./projectValidation";
+import {
+  isSafeCssPropertyName,
+  isSafeCssValue,
+  isValidProject,
+} from "./projectValidation";
 
 function project(): Project {
   return {
@@ -9,29 +13,33 @@ function project(): Project {
     name: "Safe",
     createdUtc: "2026-08-20T00:00:00Z",
     modifiedUtc: "2026-08-20T00:00:00Z",
-    breakpoints: [{ id: "desktop", label: "Desktop", maxWidth: 0, isBase: true }],
+    breakpoints: [
+      { id: "desktop", label: "Desktop", maxWidth: 0, isBase: true },
+    ],
     variables: {},
     assets: [],
-    pages: [{
-      id: "page-1",
-      name: "Home",
-      route: "index",
-      root: {
-        id: "root-1",
-        type: "Section",
-        x: 0,
-        y: 0,
-        width: 0,
-        height: 0,
-        rotation: 0,
-        attributes: {},
-        styles: {},
-        responsiveStyles: {},
-        hidden: false,
-        locked: false,
-        children: [],
+    pages: [
+      {
+        id: "page-1",
+        name: "Home",
+        route: "index",
+        root: {
+          id: "root-1",
+          type: "Section",
+          x: 0,
+          y: 0,
+          width: 0,
+          height: 0,
+          rotation: 0,
+          attributes: {},
+          styles: {},
+          responsiveStyles: {},
+          hidden: false,
+          locked: false,
+          children: [],
+        },
       },
-    }],
+    ],
   };
 }
 
@@ -42,7 +50,10 @@ describe("project validation", () => {
 
   it("rejects duplicate element ids", () => {
     const value = project();
-    value.pages[0]!.root.children.push({ ...value.pages[0]!.root, children: [] });
+    value.pages[0]!.root.children.push({
+      ...value.pages[0]!.root,
+      children: [],
+    });
     expect(isValidProject(value)).toBe(false);
   });
 

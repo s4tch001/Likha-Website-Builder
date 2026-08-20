@@ -1,5 +1,9 @@
 import { useCallback, useRef } from "react";
-import { findNode, getAbsolutePosition, useEditorStore } from "../store/editorStore";
+import {
+  findNode,
+  getAbsolutePosition,
+  useEditorStore,
+} from "../store/editorStore";
 
 interface Handle {
   dir: string;
@@ -110,7 +114,9 @@ export default function SelectionOverlay() {
     }
   }, []);
 
-  const rotateState = useRef<{ id: string; cx: number; cy: number } | null>(null);
+  const rotateState = useRef<{ id: string; cx: number; cy: number } | null>(
+    null,
+  );
 
   const onRotateDown = useCallback((e: React.PointerEvent) => {
     e.stopPropagation();
@@ -126,7 +132,11 @@ export default function SelectionOverlay() {
     }
     const rect = el.getBoundingClientRect();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    rotateState.current = { id, cx: rect.left + rect.width / 2, cy: rect.top + rect.height / 2 };
+    rotateState.current = {
+      id,
+      cx: rect.left + rect.width / 2,
+      cy: rect.top + rect.height / 2,
+    };
   }, []);
 
   const onRotateMove = useCallback((e: React.PointerEvent) => {
@@ -134,7 +144,8 @@ export default function SelectionOverlay() {
     if (!rs) {
       return;
     }
-    let deg = (Math.atan2(e.clientY - rs.cy, e.clientX - rs.cx) * 180) / Math.PI + 90;
+    let deg =
+      (Math.atan2(e.clientY - rs.cy, e.clientX - rs.cx) * 180) / Math.PI + 90;
     if (e.shiftKey) {
       deg = Math.round(deg / 15) * 15;
     }
@@ -173,13 +184,17 @@ export default function SelectionOverlay() {
         return (
           <div
             key={id}
-            className={node.locked ? "selection-overlay locked" : "selection-overlay"}
+            className={
+              node.locked ? "selection-overlay locked" : "selection-overlay"
+            }
             style={{
               left,
               top,
               width: w,
               height: h,
-              transform: node.rotation ? `rotate(${node.rotation}deg)` : undefined,
+              transform: node.rotation
+                ? `rotate(${node.rotation}deg)`
+                : undefined,
               transformOrigin: "center",
             }}
           >
@@ -199,7 +214,11 @@ export default function SelectionOverlay() {
                 <div
                   key={handle.dir}
                   className="selection-handle"
-                  style={{ left: `${handle.x * 100}%`, top: `${handle.y * 100}%`, cursor: handle.cursor }}
+                  style={{
+                    left: `${handle.x * 100}%`,
+                    top: `${handle.y * 100}%`,
+                    cursor: handle.cursor,
+                  }}
                   onPointerDown={(e) => onHandleDown(e, handle)}
                   onPointerMove={onHandleMove}
                   onPointerUp={onHandleUp}

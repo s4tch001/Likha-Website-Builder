@@ -82,7 +82,13 @@ export default function Canvas() {
   const { width, height } = useElementSize(clipRef);
 
   const [spaceDown, setSpaceDown] = useState(false);
-  const panState = useRef<{ startX: number; startY: number; panX: number; panY: number } | null>(null);
+  const [isPanning, setIsPanning] = useState(false);
+  const panState = useRef<{
+    startX: number;
+    startY: number;
+    panX: number;
+    panY: number;
+  } | null>(null);
 
   const elementDrag = useRef<ElementDrag | null>(null);
   const [dragIds, setDragIds] = useState<string[]>([]);
@@ -90,13 +96,23 @@ export default function Canvas() {
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
 
   // Marquee (rubber-band) selection, tracked in screen coords relative to the clip.
-  const marquee = useRef<{ startX: number; startY: number; additive: boolean } | null>(null);
-  const [marqueeRect, setMarqueeRect] = useState<
-    { left: number; top: number; width: number; height: number } | null
-  >(null);
+  const marquee = useRef<{
+    startX: number;
+    startY: number;
+    additive: boolean;
+  } | null>(null);
+  const [marqueeRect, setMarqueeRect] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  } | null>(null);
 
   // Smart-guide lines (screen coords within the clip), shown while snapping.
-  const [guides, setGuides] = useState<{ x: number | null; y: number | null }>({ x: null, y: null });
+  const [guides, setGuides] = useState<{ x: number | null; y: number | null }>({
+    x: null,
+    y: null,
+  });
 
   // Track the space key for drag-to-pan.
   useEffect(() => {
@@ -122,7 +138,12 @@ export default function Canvas() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const active = document.activeElement as HTMLElement | null;
-      if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.isContentEditable)) {
+      if (
+        active &&
+        (active.tagName === "INPUT" ||
+          active.tagName === "TEXTAREA" ||
+          active.isContentEditable)
+      ) {
         return;
       }
 
@@ -205,7 +226,11 @@ export default function Canvas() {
         const nz = clamp(state.zoom * Math.exp(-e.deltaY * 0.0015)) / 100;
         const worldX = (cx - state.panX) / z;
         const worldY = (cy - state.panY) / z;
-        setView({ zoom: nz * 100, panX: cx - worldX * nz, panY: cy - worldY * nz });
+        setView({
+          zoom: nz * 100,
+          panX: cx - worldX * nz,
+          panY: cy - worldY * nz,
+        });
       } else {
         setView({ panX: state.panX - e.deltaX, panY: state.panY - e.deltaY });
       }
@@ -222,7 +247,13 @@ export default function Canvas() {
         e.preventDefault();
         (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
         const state = useEditorStore.getState();
-        panState.current = { startX: e.clientX, startY: e.clientY, panX: state.panX, panY: state.panY };
+        panState.current = {
+          startX: e.clientX,
+          startY: e.clientY,
+          panX: state.panX,
+          panY: state.panY,
+        };
+        setIsPanning(true);
         return;
       }
 
@@ -230,7 +261,9 @@ export default function Canvas() {
         return;
       }
 
-      const target = (e.target as HTMLElement).closest("[data-element-id]") as HTMLElement | null;
+      const target = (e.target as HTMLElement).closest(
+        "[data-element-id]",
+      ) as HTMLElement | null;
       const id = target?.dataset.elementId ?? null;
       const isRoot = target?.dataset.root === "true";
       const store = useEditorStore.getState();
@@ -240,7 +273,11 @@ export default function Canvas() {
       if (!id || isRoot || !store.project) {
         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
         (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-        marquee.current = { startX: e.clientX - rect.left, startY: e.clientY - rect.top, additive: shift };
+        marquee.current = {
+          startX: e.clientX - rect.left,
+          startY: e.clientY - rect.top,
+          additive: shift,
+        };
         if (!shift) {
           store.selectElement(null);
         }
@@ -293,95 +330,131 @@ export default function Canvas() {
     [spaceDown],
   );
 
-  const onPointerMove = useCallback((e: React.PointerEvent) => {
-    // Panning.
-    const pan = panState.current;
-    if (pan) {
-      setView({ panX: pan.panX + (e.clientX - pan.startX), panY: pan.panY + (e.clientY - pan.startY) });
-      return;
-    }
-
-    // Marquee rubber-band.
-    const mq = marquee.current;
-    if (mq && clipRef.current) {
-      const rect = clipRef.current.getBoundingClientRect();
-      const cx = e.clientX - rect.left;
-      const cy = e.clientY - rect.top;
-      setMarqueeRect({
-        left: Math.min(mq.startX, cx),
-        top: Math.min(mq.startY, cy),
-        width: Math.abs(cx - mq.startX),
-        height: Math.abs(cy - mq.startY),
-      });
-      return;
-    }
-
-    // Element dragging.
-    const drag = elementDrag.current;
-    if (!drag) {
-      return;
-    }
-
-    const z = useEditorStore.getState().zoom / 100;
-    const dx = (e.clientX - drag.startClientX) / z;
-    const dy = (e.clientY - drag.startClientY) / z;
-
-    if (!drag.moved && Math.hypot(e.clientX - drag.startClientX, e.clientY - drag.startClientY) < DRAG_THRESHOLD) {
-      return;
-    }
-    drag.moved = true;
-
-    setDragIds(drag.ids);
-
-    // Single-element drags can re-parent into a container; group drags do not.
-    if (drag.group) {
-      setDragOffset({ dx, dy });
-      setGuides({ x: null, y: null });
-      return;
-    }
-
-    // Smart-guide snapping for single-element drags.
-    const store = useEditorStore.getState();
-    if (store.project) {
-      const bp =
-        store.project.breakpoints.find((b) => b.id === store.breakpointId) ??
-        store.project.breakpoints.find((b) => b.isBase);
-      const frameW = frameWidthFor(bp);
-      const snap = computeSnap(drag, dx, dy, store.project, store.activePageId, frameW, FRAME_MIN_HEIGHT, store.zoom);
-      setDragOffset({ dx: snap.dx, dy: snap.dy });
-      setGuides({
-        x: snap.guideX !== null ? store.panX + snap.guideX * (store.zoom / 100) : null,
-        y: snap.guideY !== null ? store.panY + snap.guideY * (store.zoom / 100) : null,
-      });
-    } else {
-      setDragOffset({ dx, dy });
-    }
-
-    const draggedEl = document.querySelector(`[data-element-id="${drag.id}"]`);
-    const stack = document.elementsFromPoint(e.clientX, e.clientY) as HTMLElement[];
-    let target: string | null = null;
-    for (const el of stack) {
-      const candidate = el.closest("[data-element-id]") as HTMLElement | null;
-      if (!candidate) {
-        continue;
+  const onPointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      // Panning.
+      const pan = panState.current;
+      if (pan) {
+        setView({
+          panX: pan.panX + (e.clientX - pan.startX),
+          panY: pan.panY + (e.clientY - pan.startY),
+        });
+        return;
       }
-      if (draggedEl && (candidate === draggedEl || draggedEl.contains(candidate))) {
-        continue;
+
+      // Marquee rubber-band.
+      const mq = marquee.current;
+      if (mq && clipRef.current) {
+        const rect = clipRef.current.getBoundingClientRect();
+        const cx = e.clientX - rect.left;
+        const cy = e.clientY - rect.top;
+        setMarqueeRect({
+          left: Math.min(mq.startX, cx),
+          top: Math.min(mq.startY, cy),
+          width: Math.abs(cx - mq.startX),
+          height: Math.abs(cy - mq.startY),
+        });
+        return;
       }
-      const type = candidate.dataset.elementType ?? "";
-      if (candidate.dataset.root === "true" || CONTAINER_TYPES.has(type)) {
-        target = candidate.dataset.elementId ?? null;
-        break;
+
+      // Element dragging.
+      const drag = elementDrag.current;
+      if (!drag) {
+        return;
       }
-    }
-    setDropTargetId(target);
-  }, [setView]);
+
+      const z = useEditorStore.getState().zoom / 100;
+      const dx = (e.clientX - drag.startClientX) / z;
+      const dy = (e.clientY - drag.startClientY) / z;
+
+      if (
+        !drag.moved &&
+        Math.hypot(
+          e.clientX - drag.startClientX,
+          e.clientY - drag.startClientY,
+        ) < DRAG_THRESHOLD
+      ) {
+        return;
+      }
+      drag.moved = true;
+
+      setDragIds(drag.ids);
+
+      // Single-element drags can re-parent into a container; group drags do not.
+      if (drag.group) {
+        setDragOffset({ dx, dy });
+        setGuides({ x: null, y: null });
+        return;
+      }
+
+      // Smart-guide snapping for single-element drags.
+      const store = useEditorStore.getState();
+      if (store.project) {
+        const bp =
+          store.project.breakpoints.find((b) => b.id === store.breakpointId) ??
+          store.project.breakpoints.find((b) => b.isBase);
+        const frameW = frameWidthFor(bp);
+        const snap = computeSnap(
+          drag,
+          dx,
+          dy,
+          store.project,
+          store.activePageId,
+          frameW,
+          FRAME_MIN_HEIGHT,
+          store.zoom,
+        );
+        setDragOffset({ dx: snap.dx, dy: snap.dy });
+        setGuides({
+          x:
+            snap.guideX !== null
+              ? store.panX + snap.guideX * (store.zoom / 100)
+              : null,
+          y:
+            snap.guideY !== null
+              ? store.panY + snap.guideY * (store.zoom / 100)
+              : null,
+        });
+      } else {
+        setDragOffset({ dx, dy });
+      }
+
+      const draggedEl = document.querySelector(
+        `[data-element-id="${drag.id}"]`,
+      );
+      const stack = document.elementsFromPoint(
+        e.clientX,
+        e.clientY,
+      ) as HTMLElement[];
+      let target: string | null = null;
+      for (const el of stack) {
+        const candidate = el.closest("[data-element-id]") as HTMLElement | null;
+        if (!candidate) {
+          continue;
+        }
+        if (
+          draggedEl &&
+          (candidate === draggedEl || draggedEl.contains(candidate))
+        ) {
+          continue;
+        }
+        const type = candidate.dataset.elementType ?? "";
+        if (candidate.dataset.root === "true" || CONTAINER_TYPES.has(type)) {
+          target = candidate.dataset.elementId ?? null;
+          break;
+        }
+      }
+      setDropTargetId(target);
+    },
+    [setView],
+  );
 
   const endInteraction = useCallback(
     (e: React.PointerEvent) => {
       if (panState.current) {
         (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
         panState.current = null;
+        setIsPanning(false);
         return;
       }
 
@@ -394,14 +467,21 @@ export default function Canvas() {
         setMarqueeRect(null);
 
         const store = useEditorStore.getState();
-        if (rectScreen && (rectScreen.width > 2 || rectScreen.height > 2) && store.project) {
+        if (
+          rectScreen &&
+          (rectScreen.width > 2 || rectScreen.height > 2) &&
+          store.project
+        ) {
           const z = store.zoom / 100;
           const wx0 = (rectScreen.left - store.panX) / z;
           const wy0 = (rectScreen.top - store.panY) / z;
           const wx1 = (rectScreen.left + rectScreen.width - store.panX) / z;
           const wy1 = (rectScreen.top + rectScreen.height - store.panY) / z;
           const hits = collectElementRects(store.project, store.activePageId)
-            .filter((r) => r.x < wx1 && r.x + r.w > wx0 && r.y < wy1 && r.y + r.h > wy0)
+            .filter(
+              (r) =>
+                r.x < wx1 && r.x + r.w > wx0 && r.y < wy1 && r.y + r.h > wy0,
+            )
             .map((r) => r.id);
           store.selectMany(hits, mq.additive);
         }
@@ -425,7 +505,10 @@ export default function Canvas() {
           } else {
             const targetId = dropTargetId ?? drag.origParentId;
             if (targetId !== drag.origParentId) {
-              const parentAbs = getAbsolutePosition(project, targetId) ?? { x: 0, y: 0 };
+              const parentAbs = getAbsolutePosition(project, targetId) ?? {
+                x: 0,
+                y: 0,
+              };
               store.reparentElement(
                 drag.id,
                 targetId,
@@ -433,7 +516,11 @@ export default function Canvas() {
                 drag.origAbsY + dy - parentAbs.y,
               );
             } else {
-              store.moveElement(drag.id, drag.origLocalX + dx, drag.origLocalY + dy);
+              store.moveElement(
+                drag.id,
+                drag.origLocalX + dx,
+                drag.origLocalY + dy,
+              );
             }
           }
         }
@@ -475,16 +562,35 @@ export default function Canvas() {
   const z = zoom / 100;
   const minor = 50 * z;
   const frameWidth = frameWidthFor(breakpoint);
-  const panning = spaceDown || panState.current !== null;
+  const panning = spaceDown || isPanning;
 
   return (
     <div className="canvas-root" style={{ background: canvasBackground }}>
-      <div className="canvas-corner" style={{ width: RULER_SIZE, height: RULER_SIZE }} />
-      <div className="canvas-ruler-h" style={{ left: RULER_SIZE, height: RULER_SIZE }}>
-        <Ruler orientation="horizontal" length={Math.max(0, width)} zoom={zoom} pan={panX} />
+      <div
+        className="canvas-corner"
+        style={{ width: RULER_SIZE, height: RULER_SIZE }}
+      />
+      <div
+        className="canvas-ruler-h"
+        style={{ left: RULER_SIZE, height: RULER_SIZE }}
+      >
+        <Ruler
+          orientation="horizontal"
+          length={Math.max(0, width)}
+          zoom={zoom}
+          pan={panX}
+        />
       </div>
-      <div className="canvas-ruler-v" style={{ top: RULER_SIZE, width: RULER_SIZE }}>
-        <Ruler orientation="vertical" length={Math.max(0, height)} zoom={zoom} pan={panY} />
+      <div
+        className="canvas-ruler-v"
+        style={{ top: RULER_SIZE, width: RULER_SIZE }}
+      >
+        <Ruler
+          orientation="vertical"
+          length={Math.max(0, height)}
+          zoom={zoom}
+          pan={panY}
+        />
       </div>
 
       <div
@@ -500,7 +606,10 @@ export default function Canvas() {
       >
         <div
           className="canvas-grid"
-          style={{ backgroundSize: `${minor}px ${minor}px`, backgroundPosition: `${panX}px ${panY}px` }}
+          style={{
+            backgroundSize: `${minor}px ${minor}px`,
+            backgroundPosition: `${panX}px ${panY}px`,
+          }}
         />
 
         {page ? (
@@ -508,7 +617,10 @@ export default function Canvas() {
             className="canvas-viewport"
             style={{ transform: `translate(${panX}px, ${panY}px) scale(${z})` }}
           >
-            <div className="device-frame" style={{ width: frameWidth, minHeight: FRAME_MIN_HEIGHT }}>
+            <div
+              className="device-frame"
+              style={{ width: frameWidth, minHeight: FRAME_MIN_HEIGHT }}
+            >
               <CanvasRenderContext.Provider
                 value={{
                   selectedIds,
@@ -520,7 +632,11 @@ export default function Canvas() {
                   breakpointId,
                 }}
               >
-                <ElementRenderer node={page.root} isRoot frameMinHeight={FRAME_MIN_HEIGHT} />
+                <ElementRenderer
+                  node={page.root}
+                  isRoot
+                  frameMinHeight={FRAME_MIN_HEIGHT}
+                />
               </CanvasRenderContext.Provider>
             </div>
           </div>
@@ -542,8 +658,12 @@ export default function Canvas() {
           />
         ) : null}
 
-        {guides.x !== null ? <div className="snap-guide snap-guide-v" style={{ left: guides.x }} /> : null}
-        {guides.y !== null ? <div className="snap-guide snap-guide-h" style={{ top: guides.y }} /> : null}
+        {guides.x !== null ? (
+          <div className="snap-guide snap-guide-v" style={{ left: guides.x }} />
+        ) : null}
+        {guides.y !== null ? (
+          <div className="snap-guide snap-guide-h" style={{ top: guides.y }} />
+        ) : null}
       </div>
     </div>
   );

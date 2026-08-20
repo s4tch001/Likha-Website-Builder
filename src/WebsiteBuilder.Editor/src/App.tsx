@@ -32,14 +32,23 @@ export default function App() {
   useEffect(() => {
     connectHost()
       .then(setHostInfo)
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)));
+      .catch((err: unknown) =>
+        setError(err instanceof Error ? err.message : String(err)),
+      );
   }, []);
 
   // Report a render summary to the host once a project is loaded (diagnostics).
   useEffect(() => {
     if (project) {
-      const elements = project.pages.reduce((sum, p) => sum + countNodes(p.root), 0);
-      bridge.publish("editor.rendered", { project: project.name, pages: project.pages.length, elements });
+      const elements = project.pages.reduce(
+        (sum, p) => sum + countNodes(p.root),
+        0,
+      );
+      bridge.publish("editor.rendered", {
+        project: project.name,
+        pages: project.pages.length,
+        elements,
+      });
     }
   }, [project]);
 
@@ -55,7 +64,11 @@ export default function App() {
     <div className="editor-root">
       <div className="editor-topbar">
         <span className="topbar-title">{project?.name ?? "Likha"}</span>
-        <span className={`topbar-status${bridge.isHosted && hostInfo ? " ok" : ""}`}>{status}</span>
+        <span
+          className={`topbar-status${bridge.isHosted && hostInfo ? " ok" : ""}`}
+        >
+          {status}
+        </span>
         <label className="topbar-bg" title="Canvas background colour">
           <span>Canvas</span>
           <input
