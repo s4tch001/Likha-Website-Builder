@@ -40,7 +40,7 @@
     <PackageReference Include="Dirkster.AvalonDock.Serializer.Xml" Version="5.0.0" />
     <PackageReference Include="Dirkster.AvalonDock.Themes.VS2013" Version="5.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.11" />
-    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4129.50" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4258.31" />
   </ItemGroup>
 
   <ItemGroup>
